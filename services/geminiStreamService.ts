@@ -12,6 +12,7 @@ import { parseApiError } from "../utils/apiErrorParser";
 import { globalApiQueue } from "./ai/globalApiQueue";
 import { PrefillPayloadBuilder } from "./ai/PrefillPayloadBuilder";
 import { removeTuongThanTag } from "../utils/xmlSanitizerUtils";
+import { applyThinkingConfig } from "../utils/thinkingLevelUtils";
 
 export async function generateGameResponseStream(
   prompt: string,
@@ -93,10 +94,9 @@ export async function generateGameResponseStream(
           config.systemInstruction = systemInstruction;
       }
 
-      const isFlashLite = currentModel.includes('flash-lite');
-      if (!isFlashLite && settings.thinkingBudget !== undefined && settings.thinkingBudget > 0 && (currentModel.includes('gemini-3') || currentModel.includes('gemini-2.5') || currentModel.includes('gemini-flash-latest') || currentModel.includes('gemini-pro-latest'))) {
-          config.thinkingConfig = { thinkingBudget: settings.thinkingBudget };
-      }
+      const updatedConfig = applyThinkingConfig(currentModel, config, settings);
+      Object.keys(config).forEach(k => delete config[k]);
+      Object.assign(config, updatedConfig);
 
       if (useGoogleSearch) {
           config.tools = [{ googleSearch: {} }];

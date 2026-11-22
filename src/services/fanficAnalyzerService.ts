@@ -2,6 +2,7 @@ import { getAiClient } from '../../services/aiClient';
 import { getApiSettings, getCurrentlyUsedApiKeyByCategory } from '../../services/apiService';
 import { getModelChainForTask, createFallbackKeyRotator } from '../../utils/modelFallback';
 import { sanitizeSearchConfig } from '../../utils/searchGuard';
+import { applyThinkingConfig } from '../../utils/thinkingLevelUtils';
 import { StreamThinkingParser } from '../utils/streamThinkingParser';
 
 export class FanficAnalyzerService {
@@ -40,13 +41,14 @@ export class FanficAnalyzerService {
           configOptions?.tools?.googleSearch
         );
 
-        // Tự động tước bỏ googleSearch nếu model không hỗ trợ
+        // Tự động tước bỏ googleSearch nếu model không hỗ trợ và áp dụng Thinking Level
         const sanitizedConfig = sanitizeSearchConfig(modelName, configOptions);
+        const finalConfig = applyThinkingConfig(modelName, sanitizedConfig, settings);
 
         // Kiểm tra xem cấu hình sau khi tước bỏ còn googleSearch hay không
         const isSearchActiveAfterSanitization = !!(
-          (Array.isArray(sanitizedConfig?.tools) && sanitizedConfig.tools.some((t: any) => t.googleSearch)) ||
-          sanitizedConfig?.tools?.googleSearch
+          (Array.isArray(finalConfig?.tools) && finalConfig.tools.some((t: any) => t.googleSearch)) ||
+          finalConfig?.tools?.googleSearch
         );
 
         // Nếu ban đầu có yêu cầu search mà sau khi sanitize lại bị tắt mất
@@ -58,7 +60,7 @@ export class FanficAnalyzerService {
         const responseStream = await aiClient.models.generateContentStream({
           model: modelName,
           contents: prompt,
-          config: sanitizedConfig
+          config: finalConfig
         });
 
         const parser = new StreamThinkingParser();

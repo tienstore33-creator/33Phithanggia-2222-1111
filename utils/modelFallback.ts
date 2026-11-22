@@ -15,6 +15,7 @@ import { PrefillPayloadBuilder } from '../services/ai/PrefillPayloadBuilder';
 import { removeTuongThanTag } from './xmlSanitizerUtils';
 import { extractGroundingDataFromResponse } from '../services/chatbotGroundingExtractor';
 import { GroundingData } from '../types/chatbot';
+import { applyThinkingConfig } from './thinkingLevelUtils';
 
 export const FLASH_LITE_FALLBACK_CHAIN = [
   'gemini-flash-lite-latest',
@@ -295,10 +296,9 @@ export async function executeWithFallback(
                 config.systemInstruction = systemInstruction;
             }
 
-            const isFlashLite = modelName.includes('flash-lite');
-            if (!isFlashLite && settings.thinkingBudget !== undefined && settings.thinkingBudget > 0 && (modelName.includes('gemini-3') || modelName.includes('gemini-2.5') || modelName.includes('gemini-2.0'))) {
-                config.thinkingConfig = { thinkingBudget: settings.thinkingBudget };
-            }
+            const finalConfigWithThinking = applyThinkingConfig(modelName, config, settings);
+            Object.keys(config).forEach(k => delete config[k]);
+            Object.assign(config, finalConfigWithThinking);
 
             if (responseMimeType === 'application/json') {
                 // IMPORTANT: Gemini does not support combining Function Calling/Google Search

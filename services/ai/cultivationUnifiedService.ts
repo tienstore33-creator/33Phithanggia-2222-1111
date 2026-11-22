@@ -2,6 +2,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { getApiSettings, getCurrentlyUsedApiKey } from "../geminiService";
 import { getAiClient } from "../aiClient";
 import { apiRunningService } from "../apiRunningService";
+import { applyThinkingConfig } from "../../utils/thinkingLevelUtils";
 
 export const generateUnifiedCultivation = async (worldContext: string): Promise<string> => {
   const settings = getApiSettings();
@@ -50,7 +51,7 @@ Trả về kết quả dưới dạng JSON nghiêm ngặt với cấu trúc:
     const response = await ai.models.generateContent({
       model: modelName,
       contents: prompt,
-      config: {
+      config: applyThinkingConfig(modelName, {
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -60,7 +61,7 @@ Trả về kết quả dưới dạng JSON nghiêm ngặt với cấu trúc:
           },
           required: ["major", "minor"]
         }
-      }
+      }, settings)
     });
     
     apiRunningService.stop(taskId);

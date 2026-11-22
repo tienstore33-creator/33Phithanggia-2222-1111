@@ -4,6 +4,7 @@ import { getModelChainForTask } from '../../utils/modelFallback';
 import { apiKeyManager } from '../../utils/apiKeyManager';
 import { apiRunningService } from '../apiRunningService';
 import { Item, Skill, PlayerStats, StatusEffect } from '../../types';
+import { applyThinkingConfig } from '../../utils/thinkingLevelUtils';
 
 export interface ProcessedStatChanges {
   systemLogs: string;
@@ -175,7 +176,8 @@ Trả về duy nhất 1 khối JSON hợp lệ theo cấu trúc sau (không ch�
 
         const response = await ai.models.generateContent({
           model: currentModel,
-          contents: contents
+          contents: contents,
+          config: applyThinkingConfig(currentModel, {}, settings)
         });
 
         const text = response?.text?.trim();

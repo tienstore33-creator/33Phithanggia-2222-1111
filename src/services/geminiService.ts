@@ -8,6 +8,7 @@ import { apiRunningService } from '../../services/apiRunningService';
 import { L0_ExtractionSchema, L05_FormattingSchema, L0_CharacterPlotSchema } from '../types/schemas/WorldGenSchemas';
 import { FanficAnalyzerService } from './fanficAnalyzerService';
 import { sanitizeSearchConfig } from '../../utils/searchGuard';
+import { applyThinkingConfig } from '../../utils/thinkingLevelUtils';
 
 // 1. System Prompt tinh chỉnh:
 const getSystemInstruction = (currentDifficulty: Difficulty) => `
@@ -198,10 +199,10 @@ export class GeminiService {
       const response = await aiClient.models.generateContent({
         model: modelName,
         contents: contents,
-        config: {
+        config: applyThinkingConfig(modelName, {
           systemInstruction: strictSystemInstruction,
           temperature: 0.1
-        }
+        }, settings)
       });
       apiRunningService.stop(taskId);
       return response.text || "[NO_DATA_FOUND]";
@@ -327,11 +328,11 @@ export class GeminiService {
 
       const step2Prompt = `Dưới đây là thông tin thô tìm kiếm được về tác phẩm/nhân vật "${topic}":\n\n${rawSearchText}\n\nHãy chuẩn hóa toàn bộ thông tin trên thành một đối tượng JSON khớp chính xác với cấu trúc yêu cầu. Hãy suy luận thông minh dựa trên bối cảnh nguyên tác nếu thông tin thô còn thiếu sót.`;
 
-      const step2Config: any = {
+      const step2Config: any = applyThinkingConfig(modelName, {
         responseMimeType: "application/json",
         responseSchema: L0_CharacterPlotSchema,
         temperature: 0.1
-      };
+      }, getApiSettings());
 
       const response2 = await aiClient.models.generateContent({
         model: modelName,
@@ -369,7 +370,7 @@ export class GeminiService {
     const modelName = getTaskModel('economy');
     const taskId = apiRunningService.start(modelName, getCurrentlyUsedKeyDisplay(), "Tạo thông tin NPC");
     try {
-      const config = sanitizeSearchConfig(modelName, {
+      const config = applyThinkingConfig(modelName, sanitizeSearchConfig(modelName, {
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -386,7 +387,7 @@ export class GeminiService {
           },
           required: ["name", "gender", "age", "personality", "background", "appearance", "skills", "goal", "role"]
         }
-      });
+      }), getApiSettings());
       const response = await aiClient.models.generateContent({
         model: modelName,
         contents: `Tạo thông tin chi tiết cho nhân vật tên là: ${npcName}`,
@@ -406,12 +407,12 @@ export class GeminiService {
     const modelName = getTaskModel('main');
     const taskId = apiRunningService.start(modelName, getCurrentlyUsedKeyDisplay(), "Tạo lượt chơi cốt truyện");
     try {
-      const config = sanitizeSearchConfig(modelName, {
+      const config = applyThinkingConfig(modelName, sanitizeSearchConfig(modelName, {
         systemInstruction: getSystemInstruction(difficulty),
         responseMimeType: "application/json",
         responseSchema: responseSchema,
         temperature: 0.7
-      });
+      }), getApiSettings());
       const response = await aiClient.models.generateContent({
         model: modelName,
         contents: `User Input: ${userInput}\n\nContext: ${context}`,
@@ -452,10 +453,10 @@ export class GeminiService {
       let startedThinking = false;
       let endedThinking = false;
 
-      const config: any = {
+      const config: any = applyThinkingConfig(modelName, {
         responseMimeType: "application/json",
         responseSchema: liteSchema as any
-      };
+      }, settings);
 
       if (onChunk) {
         const responseStream = await ai.models.generateContentStream({
@@ -603,7 +604,7 @@ export class GeminiService {
       const result = await aiClient.models.generateContent({
         model: modelName,
         contents: prompt,
-        config: {
+        config: applyThinkingConfig(modelName, {
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -625,7 +626,7 @@ export class GeminiService {
               canhGioiKhoiDau: { type: Type.STRING }
             }
           }
-        }
+        }, getApiSettings())
       });
       apiRunningService.stop(taskId);
       const rawText = result.text || "{}";
@@ -663,7 +664,7 @@ export class GeminiService {
       const response = await aiClient.models.generateContent({
         model: modelName,
         contents: prompt,
-        config: {
+        config: applyThinkingConfig(modelName, {
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -672,7 +673,7 @@ export class GeminiService {
               subRealms: { type: Type.STRING, description: "Chuỗi các tiểu cảnh giới, VD: 'Sơ kỳ - Trung kỳ - Hậu kỳ' hoặc '1 Tầng - 9 Tầng'" }
             }
           }
-        }
+        }, getApiSettings())
       });
       apiRunningService.stop(taskId);
       return JSON.parse(cleanJsonResponse(response.text || "{}"));
@@ -741,7 +742,7 @@ export class GeminiService {
       const response = await aiClient.models.generateContent({
         model: modelName,
         contents: prompt,
-        config: {
+        config: applyThinkingConfig(modelName, {
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -778,7 +779,7 @@ export class GeminiService {
             }
           },
           temperature: 0.2
-        }
+        }, getApiSettings())
       });
       apiRunningService.stop(taskId);
       return JSON.parse(cleanJsonResponse(response.text || "{}"));

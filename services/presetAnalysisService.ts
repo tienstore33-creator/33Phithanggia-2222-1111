@@ -1,4 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
+import { getApiSettings } from "./apiService";
+import { applyThinkingConfig } from "../utils/thinkingLevelUtils";
 
 export async function analyzePresetWithAI(apiKey: string, presetContent: string, model: string) {
   const ai = new GoogleGenAI({ 
@@ -34,10 +36,11 @@ ${presetContent}
 \"\"\"
 `;
 
+  const targetModel = model || 'gemini-flash-latest';
   const response = await ai.models.generateContent({
-    model: model || 'gemini-flash-latest',
+    model: targetModel,
     contents: prompt,
-    config: {
+    config: applyThinkingConfig(targetModel, {
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.ARRAY,
@@ -60,7 +63,7 @@ ${presetContent}
           required: ["title", "description", "rawContent"]
         }
       }
-    }
+    }, getApiSettings())
   });
 
   const responseText = response.text;

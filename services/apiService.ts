@@ -75,6 +75,9 @@ export const getApiSettings = (): ApiConfig => {
   if (!settings.combatModel) {
     settings.combatModel = DEFAULT_API_CONFIG.combatModel || settings.model;
   }
+  if (!settings.modelThinkingLevels) {
+    settings.modelThinkingLevels = {};
+  }
 
   return settings;
 };

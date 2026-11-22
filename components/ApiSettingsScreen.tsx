@@ -31,6 +31,8 @@ import { audioService } from '../src/services/AudioService';
 import { initLocalEmbeddingModel } from '../services/embeddingService';
 import { sortModelObjects } from '../utils/modelSorter';
 import { ModelPingTester } from './ModelPingTester';
+import { ThinkingLevelControl, ThinkingLevelAccordion, FallbackThinkingSelect } from './ThinkingLevelControls';
+import { cleanThinkingModelId, getThinkingConfigurableModels } from '../utils/thinkingLevelUtils';
 
 const getAIWritingStyleDescription = (temp: number, tk: number, tp: number): string => {
   if (temp >= 1.2 && tk >= 500 && tp >= 1.0) {
@@ -115,6 +117,7 @@ export const ApiSettingsScreen: React.FC<ApiSettingsScreenProps> = ({
   const [topP, setTopP] = useState<number>(DEFAULT_API_CONFIG.topP || 1.0);
   const [maxOutputTokens, setMaxOutputTokens] = useState<number>(DEFAULT_API_CONFIG.maxOutputTokens || 52000);
   const [thinkingBudget, setThinkingBudget] = useState<number>(DEFAULT_API_CONFIG.thinkingBudget || 20000);
+  const [modelThinkingLevels, setModelThinkingLevels] = useState<Record<string, string>>(DEFAULT_API_CONFIG.modelThinkingLevels || {});
   const [jsonBuffer, setJsonBuffer] = useState<number>(DEFAULT_API_CONFIG.jsonBuffer || 5000);
   const [useDeepReasoning, setUseDeepReasoning] = useState<boolean>(DEFAULT_API_CONFIG.useDeepReasoning || false);
   const [slowThinking, setSlowThinking] = useState<boolean>(DEFAULT_API_CONFIG.slowThinking || false);
@@ -211,6 +214,7 @@ export const ApiSettingsScreen: React.FC<ApiSettingsScreenProps> = ({
       topP,
       maxOutputTokens,
       thinkingBudget,
+      modelThinkingLevels,
       jsonBuffer,
       useDeepReasoning,
       slowThinking,
@@ -260,6 +264,7 @@ export const ApiSettingsScreen: React.FC<ApiSettingsScreenProps> = ({
     setTopP(loadedSettings.topP ?? (DEFAULT_API_CONFIG.topP || 1.0));
     setMaxOutputTokens(loadedSettings.maxOutputTokens ?? (DEFAULT_API_CONFIG.maxOutputTokens || 52000));
     setThinkingBudget(loadedSettings.thinkingBudget ?? (DEFAULT_API_CONFIG.thinkingBudget || 20000));
+    setModelThinkingLevels(loadedSettings.modelThinkingLevels || {});
     setJsonBuffer(loadedSettings.jsonBuffer ?? (DEFAULT_API_CONFIG.jsonBuffer || 5000));
     setUseDeepReasoning(loadedSettings.useDeepReasoning || false);
     setSlowThinking(loadedSettings.slowThinking || false);
@@ -670,6 +675,20 @@ export const ApiSettingsScreen: React.FC<ApiSettingsScreenProps> = ({
     if (successMessage) setSuccessMessage('');
   };
 
+  const handleThinkingLevelChange = (modelId: string, level: string) => {
+    const cleanId = cleanThinkingModelId(modelId);
+    setModelThinkingLevels(prev => {
+      const next = { ...prev };
+      if (!level || level === 'auto') {
+        delete next[cleanId];
+      } else {
+        next[cleanId] = level;
+      }
+      return next;
+    });
+    if (successMessage) setSuccessMessage('');
+  };
+
   const handleAvatarEngineChange = (e: ChangeEvent<HTMLSelectElement>) => {
     setSelectedAvatarEngine(e.target.value as AvatarGenerationEngine);
     if (successMessage) setSuccessMessage('');
@@ -890,6 +909,7 @@ export const ApiSettingsScreen: React.FC<ApiSettingsScreenProps> = ({
           setTopP(loadedSettings.topP ?? (DEFAULT_API_CONFIG.topP || 1.0));
           setMaxOutputTokens(loadedSettings.maxOutputTokens ?? (DEFAULT_API_CONFIG.maxOutputTokens || 52000));
           setThinkingBudget(loadedSettings.thinkingBudget ?? (DEFAULT_API_CONFIG.thinkingBudget || 20000));
+          setModelThinkingLevels(loadedSettings.modelThinkingLevels || {});
           setJsonBuffer(loadedSettings.jsonBuffer ?? (DEFAULT_API_CONFIG.jsonBuffer || 5000));
           setUseDeepReasoning(!!loadedSettings.useDeepReasoning);
           setSlowThinking(!!loadedSettings.slowThinking);
@@ -974,6 +994,7 @@ export const ApiSettingsScreen: React.FC<ApiSettingsScreenProps> = ({
       topP: topP,
       maxOutputTokens: maxOutputTokens,
       thinkingBudget: thinkingBudget,
+      modelThinkingLevels: modelThinkingLevels,
       jsonBuffer: jsonBuffer,
       availableModels: availableModels.map(m => m.id),
       proxyUrl: proxyUrl,
@@ -1188,6 +1209,11 @@ export const ApiSettingsScreen: React.FC<ApiSettingsScreenProps> = ({
                         <div key={modelId} className="flex items-center gap-2 p-2 bg-gray-800/40 rounded border border-gray-700 group hover:border-indigo-500/50 transition-all">
                           <span className="text-rose-500 font-mono font-bold text-[10px] w-4">#{idx + 1}</span>
                           <span className="flex-grow text-[11px] font-medium truncate text-gray-300">{modelInfo.name}</span>
+                          <FallbackThinkingSelect
+                            modelId={modelId}
+                            modelThinkingLevels={modelThinkingLevels}
+                            onChange={handleThinkingLevelChange}
+                          />
                           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button 
                               onClick={() => handleFallbackMove(fallbackModalTarget, idx, 'up')}
@@ -2093,6 +2119,11 @@ export const ApiSettingsScreen: React.FC<ApiSettingsScreenProps> = ({
                 <Settings size={18} /> Fallback
               </Button>
             </div>
+            <ThinkingLevelControl
+              modelId={selectedModel}
+              modelThinkingLevels={modelThinkingLevels}
+              onChange={handleThinkingLevelChange}
+            />
           </div>
           
            <div>
@@ -2117,6 +2148,11 @@ export const ApiSettingsScreen: React.FC<ApiSettingsScreenProps> = ({
               </Button>
             </div>
             <p className="text-xs text-gray-400 mt-1">Model này sẽ được dùng cho các tính năng cần phản hồi nhanh như tạo chợ, đấu giá.</p>
+            <ThinkingLevelControl
+              modelId={selectedEconomyModel}
+              modelThinkingLevels={modelThinkingLevels}
+              onChange={handleThinkingLevelChange}
+            />
           </div>
 
           <div>
@@ -2141,7 +2177,27 @@ export const ApiSettingsScreen: React.FC<ApiSettingsScreenProps> = ({
               </Button>
             </div>
             <p className="text-xs text-gray-400 mt-1">Model này sẽ được dùng cho các lượt đánh trong client chiến đấu để tối ưu tốc độ.</p>
+            <ThinkingLevelControl
+              modelId={selectedCombatModel}
+              modelThinkingLevels={modelThinkingLevels}
+              onChange={handleThinkingLevelChange}
+            />
           </div>
+
+          <ThinkingLevelAccordion
+            models={getThinkingConfigurableModels({
+              selectedModel,
+              selectedEconomyModel,
+              selectedCombatModel,
+              storyFallback,
+              economyFallback,
+              combatFallback,
+              availableModels,
+              secondaryModels,
+            })}
+            modelThinkingLevels={modelThinkingLevels}
+            onChange={handleThinkingLevelChange}
+          />
 
           {/* Model Ping / Testing Component */}
           <ModelPingTester 

@@ -2,6 +2,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { NPC } from "@/types";
 import { getTaskModel, getApiSettings, getCurrentlyUsedApiKey } from "./apiService";
 import { getAiClient } from "./aiClient";
+import { applyThinkingConfig } from "../utils/thinkingLevelUtils";
 
 export class AISetupService {
   private static getClient(): GoogleGenAI {
@@ -26,7 +27,7 @@ export class AISetupService {
     const response = await aiClient.models.generateContent({
       model: modelName,
       contents: prompt,
-      config: {
+      config: applyThinkingConfig(modelName, {
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -36,7 +37,7 @@ export class AISetupService {
           },
           required: ["majors", "minors"]
         }
-      }
+      }, getApiSettings())
     });
 
     return JSON.parse(response.text);
@@ -74,7 +75,7 @@ export class AISetupService {
     const aiPromise = aiClient.models.generateContent({
       model: modelName,
       contents: prompt,
-      config: {
+      config: applyThinkingConfig(modelName, {
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -84,7 +85,7 @@ export class AISetupService {
           },
           required: ["playerRealm", "npcMap"]
         }
-      }
+      }, getApiSettings())
     });
 
     const timeoutPromise = new Promise<null>((_, reject) => 
@@ -131,7 +132,7 @@ export class AISetupService {
     const response = await aiClient.models.generateContent({
       model: modelName,
       contents: CULTIVATION_SYSTEM_PROMPT(context),
-      config: {
+      config: applyThinkingConfig(modelName, {
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -141,7 +142,7 @@ export class AISetupService {
           },
           required: ["majors", "minors"]
         }
-      }
+      }, getApiSettings())
     });
 
     return JSON.parse(response.text);

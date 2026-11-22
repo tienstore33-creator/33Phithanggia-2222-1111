@@ -168,6 +168,7 @@ export interface ApiConfig {
   topP?: number;
   maxOutputTokens?: number;
   thinkingBudget?: number;
+  modelThinkingLevels?: Record<string, string>;
   jsonBuffer?: number;
   pacingLevel?: 'slow' | 'normal' | 'fast';
   availableModels?: string[];

@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { getTaskModel, getCurrentlyUsedApiKey, getApiSettings } from "../../services/apiService";
 import { getAiClient } from "../../services/aiClient";
+import { applyThinkingConfig } from "../../utils/thinkingLevelUtils";
 
 /**
  * CanonExtractionService
@@ -66,9 +67,9 @@ export class CanonExtractionService {
       const response = await genAI.models.generateContent({ 
         model: modelName, 
         contents: `[NGUỒN NGUYÊN TÁC]:\n${rawCanonText}\n\n[YÊU CẦU]: ${queryPrompt}`,
-        config: {
+        config: applyThinkingConfig(modelName, {
             systemInstruction
-        }
+        }, getApiSettings())
       });
 
       return response.text || "[NO_DATA_FOUND]";

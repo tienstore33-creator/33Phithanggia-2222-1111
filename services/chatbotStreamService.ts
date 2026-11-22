@@ -11,6 +11,7 @@ import { fallbackPromptService } from './fallbackPromptService';
 import { parseApiError } from '../utils/apiErrorParser';
 import { sanitizeSearchConfig, isGoogleSearchSupported } from '../utils/searchGuard';
 import { globalApiQueue } from './ai/globalApiQueue';
+import { applyThinkingConfig } from '../utils/thinkingLevelUtils';
 
 export interface StreamCallbacks {
   onChunk: (chunk: string) => void;
@@ -108,7 +109,8 @@ export async function streamChatbotResponse(
             baseConfig.tools = [{ googleSearch: {} }];
           }
 
-          const config = sanitizeSearchConfig(currentModel, baseConfig);
+          const configWithThinking = applyThinkingConfig(currentModel, baseConfig, settings);
+          const config = sanitizeSearchConfig(currentModel, configWithThinking);
 
           // Đưa vào Global API Queue để tránh tắc nghẽn hoặc xung đột traffic
           const resultStream = await globalApiQueue.enqueue(async () => {
@@ -252,13 +254,16 @@ export async function streamChatbotResponse(
       const manualTaskId = apiRunningService.start(selectedModel, isProxy ? 'Proxy API' : 'Manual Selection', purpose, 'Manual Retry');
 
       try {
+        const retryConfig = applyThinkingConfig(
+          selectedModel,
+          { systemInstruction: systemInstruction || undefined },
+          settings
+        );
         const resultStream = await globalApiQueue.enqueue(async () => {
           return await manualAi.models.generateContentStream({
             model: selectedModel,
             contents,
-            config: {
-              systemInstruction: systemInstruction || undefined
-            },
+            config: retryConfig,
           });
         }, 0);
 

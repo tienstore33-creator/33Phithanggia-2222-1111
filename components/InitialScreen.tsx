@@ -108,6 +108,12 @@ function markdownToHtml(markdownText: string): string {
 }
 
 const LOCAL_UPDATE_NOTES = `
+### 🌟 CẬP NHẬT MỚI: CƠ CHẾ LỰA CHỌN THINKING LEVEL THEO TỪNG MODEL (Phiên bản 12.0.0)
+* **Kiểm soát mức suy luận chuyên sâu cho từng tác vụ & model**:
+  - Bổ sung bộ chọn **Thinking Level** trực quan ngay bên dưới Model Cốt Truyện Chính, Kinh Tế & Chiến Đấu (tự động nhận diện các mức hỗ trợ như \`MINIMAL\`, \`LOW\`, \`MEDIUM\`, \`HIGH\`, \`XHIGH\`).
+  - Tích hợp danh sách **Tùy chỉnh Thinking Level theo từng Model** dạng thu gọn (Accordion) và menu chọn nhanh ngay trên từng dòng trong bảng **Cấu hình Model Dự Phòng (Fallback)**.
+  - Đồng bộ truyền cấu hình \`thinkingConfig\` xuống toàn bộ luồng gọi Gemini API (bao gồm cả xử lý an toàn tương thích cho Gemini 4 và Gemini 2.5).
+
 ### 🌟 CẬP NHẬT MỚI: CHUẨN HÓA CỔNG THẨM ĐỊNH NHIỆM VỤ YGGDRASIL (Phiên bản 11.7.0)
 * **Tăng cường độ tuân thủ & đồng bộ nhiệm vụ cốt truyện**:
   - Tách riêng module \`questThinkingRules.ts\` với quy trình 4 bước kiểm chứng nhiệm vụ cho thanh tra Yggdrasil kèm ví dụ đối xứng chống xác nhận ảo.

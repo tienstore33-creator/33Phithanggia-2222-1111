@@ -21,6 +21,7 @@ import { sanitizeSearchConfig, isGoogleSearchSupported } from '../utils/searchGu
 import { globalApiQueue } from './ai/globalApiQueue';
 import { removeTuongThanTag } from '../utils/xmlSanitizerUtils';
 import { PrefillPayloadBuilder } from './ai/PrefillPayloadBuilder';
+import { applyThinkingConfig } from '../utils/thinkingLevelUtils';
 
 /**
  * Service xử lý lượt kể chuyện mở đầu (Lượt 0 - Initial Turn)
@@ -112,12 +113,8 @@ export async function generateInitialStoryStream(
             baseConfig.tools = [{ googleSearch: {} }];
           }
 
-          const isFlashLite = currentModel.includes('flash-lite');
-          if (!isFlashLite && settings.thinkingBudget !== undefined && settings.thinkingBudget > 0 && (currentModel.includes('gemini-3') || currentModel.includes('gemini-2.5') || currentModel.includes('gemini-flash-latest') || currentModel.includes('gemini-pro-latest'))) {
-            baseConfig.thinkingConfig = { thinkingBudget: settings.thinkingBudget };
-          }
-
-          const config = sanitizeSearchConfig(currentModel, baseConfig);
+          const configWithThinking = applyThinkingConfig(currentModel, baseConfig, settings);
+          const config = sanitizeSearchConfig(currentModel, configWithThinking);
 
           // Đưa vào Global API Queue để điều tiết lưu lượng
           const resultStream = await globalApiQueue.enqueue(async () => {
@@ -221,13 +218,15 @@ export async function generateInitialStoryStream(
           prefillModelText: PrefillPayloadBuilder.DEFAULT_PREFILL_TEXT
         });
 
+        const retryConfig = applyThinkingConfig(selectedModel, {
+          systemInstruction: systemInstruction || undefined
+        }, settings);
+
         const resultStream = await globalApiQueue.enqueue(async () => {
           return await manualAi.models.generateContentStream({
             model: selectedModel,
             contents,
-            config: {
-              systemInstruction: systemInstruction || undefined
-            }
+            config: retryConfig
           });
         }, 0);
 

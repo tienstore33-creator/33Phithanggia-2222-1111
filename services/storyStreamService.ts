@@ -11,6 +11,7 @@ import { getModelChainForTask, setLastSuccessfulModel, createFallbackKeyRotator 
 import { apiKeyManager } from "../utils/apiKeyManager";
 import { fallbackEventService } from "./fallbackEventService";
 import { replaceStoryKeywords } from '../utils/storyKeywordReplacer';
+import { applyThinkingConfig } from '../utils/thinkingLevelUtils';
 
 export interface StoryStreamCallbacks {
   onChunk: (chunk: string) => void;
@@ -149,11 +150,17 @@ export async function streamNextTurn(
 
         const streamPromise = (async () => {
           let result: any;
+          const requestConfig = applyThinkingConfig(
+            currentModel,
+            payload.systemInstruction ? { systemInstruction: payload.systemInstruction } : {},
+            settings
+          );
+          const hasConfig = Object.keys(requestConfig).length > 0;
           try {
             result = await ai.models.generateContentStream({
               model: currentModel,
               contents,
-              config: payload.systemInstruction ? { systemInstruction: payload.systemInstruction } : undefined,
+              config: hasConfig ? requestConfig : undefined,
             });
           } catch (streamErr: any) {
             const errStr = typeof streamErr === 'string' ? streamErr : (streamErr?.message || JSON.stringify(streamErr));
@@ -162,7 +169,7 @@ export async function streamNextTurn(
               const singleRes = await ai.models.generateContent({
                 model: currentModel,
                 contents,
-                config: payload.systemInstruction ? { systemInstruction: payload.systemInstruction } : undefined,
+                config: hasConfig ? requestConfig : undefined,
               });
               const text = removeTuongThanTag(singleRes.text || '');
               fullText = isPrefillEligible && !text.includes('<thinking>') ? (prefillModelText + text) : text;
@@ -293,10 +300,15 @@ export async function streamNextTurn(
               if (onResetStream) onResetStream();
               
               const isRetryPrefillEligible = shouldUsePrefill && PrefillPayloadBuilder.isPrefillEligible(selectedModel);
+              const retryConfig = applyThinkingConfig(
+                selectedModel,
+                payload.systemInstruction ? { systemInstruction: payload.systemInstruction } : {},
+                settings
+              );
               const result = await manualAi.models.generateContentStream({
                   model: selectedModel,
                   contents: isRetryPrefillEligible ? PrefillPayloadBuilder.buildContents({ prompt: finalPromptToSend, enablePrefill: true, prefillModelText }) : [{ role: 'user', parts: [{ text: finalPromptToSend }] }],
-                  config: payload.systemInstruction ? { systemInstruction: payload.systemInstruction } : undefined,
+                  config: Object.keys(retryConfig).length > 0 ? retryConfig : undefined,
               });
 
               fullText = isRetryPrefillEligible ? prefillModelText : '';
@@ -490,7 +502,12 @@ NHIỆM VỤ TIẾP NỐI BẮT BUỘC:
     const { apiKey: keyToUse, apiKeyLabel: activeKeyLabel } = keyInfo;
     const ai = getAiClient(settings, keyToUse, 'main');
     const contents = [{ role: 'user', parts: [{ text: finalPromptToSend }] }];
-    const config = systemInstruction ? { systemInstruction } : undefined;
+    const continuationConfig = applyThinkingConfig(
+      currentModel,
+      systemInstruction ? { systemInstruction } : {},
+      settings
+    );
+    const config = Object.keys(continuationConfig).length > 0 ? continuationConfig : undefined;
     const taskId = apiRunningService.start(currentModel, activeKeyLabel, purpose, finalPromptToSend);
 
     try {

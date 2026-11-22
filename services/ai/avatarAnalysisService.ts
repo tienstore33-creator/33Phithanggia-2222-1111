@@ -3,6 +3,7 @@ import { getApiSettings, getCurrentlyUsedApiKeyByCategory } from '../apiService'
 import { getModelChainForTask } from '../../utils/modelFallback';
 import { apiKeyManager } from '../../utils/apiKeyManager';
 import { apiRunningService } from '../apiRunningService';
+import { applyThinkingConfig } from '../../utils/thinkingLevelUtils';
 
 /**
  * Trích xuất mimeType và dữ liệu base64 từ data url hoặc chuỗi base64 thô.
@@ -143,7 +144,8 @@ TUYỆT ĐỐI KHÔNG miêu tả các tư thế hành động hay cử chỉ t�
 
         const response = await ai.models.generateContent({
           model: currentModel,
-          contents: contents
+          contents: contents,
+          config: applyThinkingConfig(currentModel, {}, settings)
         });
 
         const text = response?.text?.trim();

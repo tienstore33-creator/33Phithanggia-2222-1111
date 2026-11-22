@@ -129,6 +129,7 @@ export const DEFAULT_API_CONFIG: ApiConfig = {
   topP: 1.0,
   maxOutputTokens: 52000,
   thinkingBudget: 20000,
+  modelThinkingLevels: {},
   jsonBuffer: 5000,
   proxyUrl2: '',
   proxyKey2: '',

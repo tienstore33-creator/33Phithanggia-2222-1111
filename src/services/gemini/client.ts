@@ -1,5 +1,6 @@
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from '@google/genai';
-import { getTaskModel } from '../../../services/apiService';
+import { getApiSettings, getTaskModel } from '../../../services/apiService';
+import { applyThinkingConfig } from '../../../utils/thinkingLevelUtils';
 
 const nsfwSafetySettings = [
     { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -9,13 +10,14 @@ const nsfwSafetySettings = [
 ];
 
 export async function callJsonAI(prompt: string, schema: any, geminiService: GoogleGenAI, isNsfw: boolean) {
+    const modelName = getTaskModel('economy');
     const result = await geminiService.models.generateContent({
-        model: getTaskModel('economy'),
+        model: modelName,
         contents: prompt,
-        config: {
+        config: applyThinkingConfig(modelName, {
             responseMimeType: "application/json",
             responseSchema: schema as any,
-        },
+        }, getApiSettings()),
         // safetySettings not directly supported in this syntax or handled globally
     });
     return result;

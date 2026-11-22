@@ -282,6 +282,7 @@ async function startServer() {
     };
     if (parsedBody.safetySettings) proxyConfig.safetySettings = parsedBody.safetySettings;
     if (parsedBody.toolConfig) proxyConfig.toolConfig = parsedBody.toolConfig;
+    if (parsedBody.thinkingConfig && !proxyConfig.thinkingConfig) proxyConfig.thinkingConfig = parsedBody.thinkingConfig;
 
     // A. Xử lý Server-Side Streaming (streamGenerateContent)
     if (apiPath.includes(':streamGenerateContent')) {

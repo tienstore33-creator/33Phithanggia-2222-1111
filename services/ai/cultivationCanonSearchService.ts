@@ -2,6 +2,7 @@ import { getApiSettings, getCurrentlyUsedApiKey, getTaskModel } from '../apiServ
 import { getAiClient } from '../aiClient';
 import { Type } from '@google/genai';
 import { sanitizeSearchConfig } from '../../utils/searchGuard';
+import { applyThinkingConfig } from '../../utils/thinkingLevelUtils';
 
 export class CultivationCanonSearchService {
   /**
@@ -30,7 +31,7 @@ Trả về định dạng JSON:
 }`;
 
     try {
-      const config = sanitizeSearchConfig(modelName, {
+      const config = applyThinkingConfig(modelName, sanitizeSearchConfig(modelName, {
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -42,7 +43,7 @@ Trả về định dạng JSON:
         },
         // Thêm tools googleSearch nếu cần, hoặc để Gemini tra cứu tri thức sẵn có
         tools: [{ googleSearch: {} }]
-      });
+      }), settings);
 
       const response = await aiClient.models.generateContent({
         model: modelName,
@@ -61,7 +62,7 @@ Trả về định dạng JSON:
       const fallbackResponse = await aiClient.models.generateContent({
         model: modelName,
         contents: prompt,
-        config: {
+        config: applyThinkingConfig(modelName, {
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -71,7 +72,7 @@ Trả về định dạng JSON:
             },
             required: ["majors", "minors"]
           }
-        }
+        }, settings)
       });
       const parsed = JSON.parse(fallbackResponse.text || "{}");
       return {
