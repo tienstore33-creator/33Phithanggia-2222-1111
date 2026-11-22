@@ -1,0 +1,277 @@
+./components/gameplay/RealTimeCombatScreen.tsx:import { handleAuraFarmingBurst, updateAuraFarmingTimer, handleAuraFarmingBossAttack, handleAuraFarmingProjectileUpdate, handleAuraFarmingExplosion } from '../../utils/auraFarming';
+./components/gameplay/RealTimeCombatScreen.tsx:    isBoss?: boolean;
+./components/gameplay/RealTimeCombatScreen.tsx:    bossSkillTimer?: number;
+./components/gameplay/RealTimeCombatScreen.tsx:    bossSkillPhase?: 'idle' | 'telegraph' | 'action';
+./components/gameplay/RealTimeCombatScreen.tsx:    bossSkillType?: 'bullet_hell' | 'aoe_slam' | 'dash' | 'laser' | 'summon' | 'lightning' | 'shield';
+./components/gameplay/RealTimeCombatScreen.tsx:    bossTelegraphPos?: {x: number, y: number};
+./components/gameplay/RealTimeCombatScreen.tsx:    bossTelegraphRadius?: number;
+./components/gameplay/RealTimeCombatScreen.tsx:    bossRewardProcessed?: boolean;
+./components/gameplay/RealTimeCombatScreen.tsx:        bossTriggered: false,
+./components/gameplay/RealTimeCombatScreen.tsx:                isBoss: (c as any).isBoss || (c as any).triggerBoss || (c as any).isBossNpc
+./components/gameplay/RealTimeCombatScreen.tsx:        // Aura Farming: Burst points accumulation for bosses
+./components/gameplay/RealTimeCombatScreen.tsx:            const isSieu = !!source.isBoss;
+./components/gameplay/RealTimeCombatScreen.tsx:        // Check if any enemy boss has died but hasn't had their reward processed
+./components/gameplay/RealTimeCombatScreen.tsx:        const deadBoss = s.entities.find(e => e.isBoss && !e.isAlly && (e.hp <= 0 || e.isDead) && !e.bossRewardProcessed);
+./components/gameplay/RealTimeCombatScreen.tsx:        if (deadBoss) {
+./components/gameplay/RealTimeCombatScreen.tsx:            deadBoss.bossRewardProcessed = true;
+./components/gameplay/RealTimeCombatScreen.tsx:            deadBoss.hp = 0;
+./components/gameplay/RealTimeCombatScreen.tsx:            deadBoss.isDead = true;
+./components/gameplay/RealTimeCombatScreen.tsx:            const ceStat = getMutableStats(deadBoss.combatant);
+./components/gameplay/RealTimeCombatScreen.tsx:        // Boss Reveal Logic (1s mark)
+./components/gameplay/RealTimeCombatScreen.tsx:        if (s.totalTime >= 1000 && !s.bossTriggered) {
+./components/gameplay/RealTimeCombatScreen.tsx:            s.bossTriggered = true;
+./components/gameplay/RealTimeCombatScreen.tsx:                const boss = livingEnemies[Math.floor(Math.random() * livingEnemies.length)];
+./components/gameplay/RealTimeCombatScreen.tsx:                boss.isBoss = true;
+./components/gameplay/RealTimeCombatScreen.tsx:                boss.maxHp *= 3;
+./components/gameplay/RealTimeCombatScreen.tsx:                boss.hp = boss.maxHp;
+./components/gameplay/RealTimeCombatScreen.tsx:                spawnVfx("BOSS XUẤT HIỆN!", boss.x, boss.y - 60, '#ef4444');
+./components/gameplay/RealTimeCombatScreen.tsx:                state.current.combatLogs.unshift(`[CẢNH BÁO] ${boss.combatant.name} đã thức tỉnh Boss Buff!`);
+./components/gameplay/RealTimeCombatScreen.tsx:                .filter(e => !e.isDead && !e.isObstacle && !e.isBoss && !e.isPlayer && e.isAlly === isAlly && (e.hp / e.maxHp) >= 0.25)
+./components/gameplay/RealTimeCombatScreen.tsx:            // Boss Logic: Phase Transition & Enraged Skills
+./components/gameplay/RealTimeCombatScreen.tsx:            const bossStats = getMutableStats(entity.combatant);
+./components/gameplay/RealTimeCombatScreen.tsx:            const bossAtk = bossStats?.sucTanCong || 0;
+./components/gameplay/RealTimeCombatScreen.tsx:            if (entity.isBoss && !isStunned) {
+./components/gameplay/RealTimeCombatScreen.tsx:                    entity.bossSkillTimer = 2000; // Delay before first skill
+./components/gameplay/RealTimeCombatScreen.tsx:                    entity.bossSkillPhase = 'idle';
+./components/gameplay/RealTimeCombatScreen.tsx:                    const isTriggerBoss = (entity.combatant as any).triggerBoss || entity.combatant.name.toLowerCase().includes('triggerboss');
+./components/gameplay/RealTimeCombatScreen.tsx:                    const skillInterval = isTriggerBoss ? 10000 : 3000;
+./components/gameplay/RealTimeCombatScreen.tsx:                    if (!entity.bossSkillTimer) entity.bossSkillTimer = skillInterval;
+./components/gameplay/RealTimeCombatScreen.tsx:                    entity.bossSkillTimer -= dt;
+./components/gameplay/RealTimeCombatScreen.tsx:                    if (entity.bossSkillTimer <= 0) {
+./components/gameplay/RealTimeCombatScreen.tsx:                        if (entity.bossSkillPhase === 'idle') {
+./components/gameplay/RealTimeCombatScreen.tsx:                            entity.bossSkillType = skills[Math.floor(Math.random() * skills.length)];
+./components/gameplay/RealTimeCombatScreen.tsx:                            entity.bossSkillPhase = 'telegraph';
+./components/gameplay/RealTimeCombatScreen.tsx:                            entity.bossSkillTimer = (isTriggerBoss && entity.bossSkillType === 'laser') ? 1000 : 1000; 
+./components/gameplay/RealTimeCombatScreen.tsx:                            if (entity.bossSkillType === 'aoe_slam') {
+./components/gameplay/RealTimeCombatScreen.tsx:                                entity.bossTelegraphPos = target ? {x: target.x, y: target.y} : {x: entity.x, y: entity.y};
+./components/gameplay/RealTimeCombatScreen.tsx:                                entity.bossTelegraphRadius = 50;
+./components/gameplay/RealTimeCombatScreen.tsx:                            } else if (entity.bossSkillType === 'dash') {
+./components/gameplay/RealTimeCombatScreen.tsx:                                entity.bossTelegraphPos = target ? {x: target.x, y: target.y} : {x: entity.x, y: entity.y};
+./components/gameplay/RealTimeCombatScreen.tsx:                            } else if (entity.bossSkillType === 'summon') {
+./components/gameplay/RealTimeCombatScreen.tsx:                                entity.bossSkillTimer = 500;
+./components/gameplay/RealTimeCombatScreen.tsx:                                entity.bossSkillTimer = (isTriggerBoss && entity.bossSkillType === 'laser') ? 1000 : 1000;
+./components/gameplay/RealTimeCombatScreen.tsx:                        } else if (entity.bossSkillPhase === 'telegraph') {
+./components/gameplay/RealTimeCombatScreen.tsx:                            entity.bossSkillPhase = 'action';
+./components/gameplay/RealTimeCombatScreen.tsx:                            if (entity.bossSkillType === 'aoe_slam') {
+./components/gameplay/RealTimeCombatScreen.tsx:                                entity.bossSkillTimer = 1000; // 3 expanding rings over 1s
+./components/gameplay/RealTimeCombatScreen.tsx:                                    if (entity.bossTelegraphPos && Math.hypot(t.x - entity.bossTelegraphPos.x, t.y - entity.bossTelegraphPos.y) < 200) {
+./components/gameplay/RealTimeCombatScreen.tsx:                                        const dmg = 30 + bossAtk;
+./components/gameplay/RealTimeCombatScreen.tsx:                                spawnVfx("💥", entity.bossTelegraphPos!.x, entity.bossTelegraphPos!.y, '#ef4444');
+./components/gameplay/RealTimeCombatScreen.tsx:                            } else if (entity.bossSkillType === 'lightning') {
+./components/gameplay/RealTimeCombatScreen.tsx:                                entity.bossSkillTimer = 1500; // Duration of lightning strikes
+./components/gameplay/RealTimeCombatScreen.tsx:                            } else if (entity.bossSkillType === 'shield') {
+./components/gameplay/RealTimeCombatScreen.tsx:                                entity.bossSkillTimer = 2000; // Duration of shield
+./components/gameplay/RealTimeCombatScreen.tsx:                                spawnVfx("LÁ CHẮN BOSS! 🛡️", entity.x, entity.y - 60, '#38bdf8');
+./components/gameplay/RealTimeCombatScreen.tsx:                            } else if (entity.bossSkillType === 'dash') {
+./components/gameplay/RealTimeCombatScreen.tsx:                                entity.bossSkillTimer = 1000; // Action duration 
+./components/gameplay/RealTimeCombatScreen.tsx:                            } else if (entity.bossSkillType === 'bullet_hell') {
+./components/gameplay/RealTimeCombatScreen.tsx:                                entity.bossSkillTimer = 3000;
+./components/gameplay/RealTimeCombatScreen.tsx:                            } else if (entity.bossSkillType === 'laser') {
+./components/gameplay/RealTimeCombatScreen.tsx:                                entity.bossSkillTimer = 5000; // 5s duration
+./components/gameplay/RealTimeCombatScreen.tsx:                            } else if (entity.bossSkillType === 'summon') {
+./components/gameplay/RealTimeCombatScreen.tsx:                                // Boss checking if old minions are still alive
+./components/gameplay/RealTimeCombatScreen.tsx:                                const currentMinions = s.entities.filter(e => e.combatant.name === 'Tay sai BOSS' && !e.isDead);
+./components/gameplay/RealTimeCombatScreen.tsx:                                     entity.bossSkillPhase = 'idle';
+./components/gameplay/RealTimeCombatScreen.tsx:                                     entity.bossSkillTimer = 1000;
+./components/gameplay/RealTimeCombatScreen.tsx:                                entity.bossSkillTimer = 500;
+./components/gameplay/RealTimeCombatScreen.tsx:                                const bossAtkVal = bossStats?.sucTanCong || 10;
+./components/gameplay/RealTimeCombatScreen.tsx:                                const minionAtk = Math.max(1, Math.floor(bossAtkVal * 0.05));
+./components/gameplay/RealTimeCombatScreen.tsx:                                            name: 'Tay sai BOSS', 
+./components/gameplay/RealTimeCombatScreen.tsx:                                                ...bossStats, 
+./components/gameplay/RealTimeCombatScreen.tsx:                        } else if (entity.bossSkillPhase === 'action') {
+./components/gameplay/RealTimeCombatScreen.tsx:                            entity.bossSkillPhase = 'idle';
+./components/gameplay/RealTimeCombatScreen.tsx:                            const nextInterval = ((entity.combatant as any).triggerBoss || entity.combatant.name.toLowerCase().includes('triggerboss')) ? 10000 : (3000 + Math.random() * 2000);
+./components/gameplay/RealTimeCombatScreen.tsx:                            entity.bossSkillTimer = nextInterval; // Cooldown between skills
+./components/gameplay/RealTimeCombatScreen.tsx:                            entity.bossTelegraphPos = undefined;
+./components/gameplay/RealTimeCombatScreen.tsx:                    if (entity.bossSkillPhase === 'action') {
+./components/gameplay/RealTimeCombatScreen.tsx:                        if (entity.bossSkillType === 'bullet_hell') {
+./components/gameplay/RealTimeCombatScreen.tsx:                            if (Math.floor(entity.bossSkillTimer) % 200 < dt) {
+./components/gameplay/RealTimeCombatScreen.tsx:                                    const angle = (i / numProjectiles) * Math.PI * 2 + (entity.bossSkillTimer / 500); 
+./components/gameplay/RealTimeCombatScreen.tsx:                                        id: `boss_hell_${Date.now()}_${Math.random()}`,
+./components/gameplay/RealTimeCombatScreen.tsx:                                        damage: 5 + (entity.hp / entity.maxHp) * 10 + bossAtk,
+./components/gameplay/RealTimeCombatScreen.tsx:                        } else if (entity.bossSkillType === 'aoe_slam') {
+./components/gameplay/RealTimeCombatScreen.tsx:                            const t = Math.floor(entity.bossSkillTimer);
+./components/gameplay/RealTimeCombatScreen.tsx:                                    if (entity.bossTelegraphPos && Math.hypot(target.x - entity.bossTelegraphPos.x, target.y - entity.bossTelegraphPos.y) < radius + 40) {
+./components/gameplay/RealTimeCombatScreen.tsx:                                        const dmg = 20 + bossAtk;
+./components/gameplay/RealTimeCombatScreen.tsx:                                        text: "🌋", x: entity.bossTelegraphPos!.x + Math.cos(angle)*radius, y: entity.bossTelegraphPos!.y + Math.sin(angle)*radius,
+./components/gameplay/RealTimeCombatScreen.tsx:                        } else if (entity.bossSkillType === 'lightning') {
+./components/gameplay/RealTimeCombatScreen.tsx:                            if (Math.floor(entity.bossSkillTimer) % 150 < dt) {
+./components/gameplay/RealTimeCombatScreen.tsx:                                        const dmg = 15 + bossAtk;
+./components/gameplay/RealTimeCombatScreen.tsx:                        } else if (entity.bossSkillType === 'dash') {
+./components/gameplay/RealTimeCombatScreen.tsx:                            // Fast dash towards bossTelegraphPos
+./components/gameplay/RealTimeCombatScreen.tsx:                            if (entity.bossTelegraphPos) {
+./components/gameplay/RealTimeCombatScreen.tsx:                                const dx = entity.bossTelegraphPos.x - entity.x;
+./components/gameplay/RealTimeCombatScreen.tsx:                                const dy = entity.bossTelegraphPos.y - entity.y;
+./components/gameplay/RealTimeCombatScreen.tsx:                                    entity.x = entity.bossTelegraphPos.x;
+./components/gameplay/RealTimeCombatScreen.tsx:                                    entity.y = entity.bossTelegraphPos.y;
+./components/gameplay/RealTimeCombatScreen.tsx:                                    entity.bossSkillTimer = 0; // End dash
+./components/gameplay/RealTimeCombatScreen.tsx:                                            const dmg = 15 + bossAtk;
+./components/gameplay/RealTimeCombatScreen.tsx:                        } else if (entity.bossSkillType === 'laser') {
+./components/gameplay/RealTimeCombatScreen.tsx:                                    // We only care about points in front of the boss
+./components/gameplay/RealTimeCombatScreen.tsx:                                            // Boss Laser Damage: 1% HP every 0.2s
+./components/gameplay/RealTimeCombatScreen.tsx:                        // Standard AI or Boss logic (Not in snake chain)
+./components/gameplay/RealTimeCombatScreen.tsx:                                    const isBossBusy = entity.isBoss && entity.bossSkillPhase !== 'idle' && entity.bossSkillType === 'laser';
+./components/gameplay/RealTimeCombatScreen.tsx:                                    if (!isStunned && entity.combatant.name !== 'Tay sai BOSS' && !isBossBusy) {
+./components/gameplay/RealTimeCombatScreen.tsx:                                            handleAuraFarmingBossAttack(entity, combatantToAttack, s, getMutableStats);
+./components/gameplay/RealTimeCombatScreen.tsx:                                    } else if (!isStunned && entity.combatant.name === 'Tay sai BOSS') {
+./components/gameplay/RealTimeCombatScreen.tsx:            const isLaserChargingOrFiring = (entity.bossSkillType === 'laser' && (entity.bossSkillPhase === 'telegraph' || entity.bossSkillPhase === 'action'));
+./components/gameplay/RealTimeCombatScreen.tsx:            if (entity.isBoss && (isLaserChargingOrFiring || (entity.bossSkillPhase === 'action' && (entity.bossSkillType === 'bullet_hell')))) {
+./components/gameplay/RealTimeCombatScreen.tsx:                             damage: l.damage / 3, // Boosted total damage for Boss, split between beams
+./components/gameplay/RealTimeCombatScreen.tsx:            // Boss Laser Telegraph Effect
+./components/gameplay/RealTimeCombatScreen.tsx:            if (e.isBoss && e.bossSkillType === 'laser' && e.bossSkillPhase === 'telegraph') {
+./components/gameplay/RealTimeCombatScreen.tsx:                const isTriggerBoss = (e.combatant as any).triggerBoss || e.combatant.name.toLowerCase().includes('triggerboss');
+./components/gameplay/RealTimeCombatScreen.tsx:                if (isTriggerBoss) {
+./components/gameplay/RealTimeCombatScreen.tsx:                    const progress = (telegraphTotal - (e.bossSkillTimer || 0)) / telegraphTotal;
+./components/gameplay/RealTimeCombatScreen.tsx:            // Boss Rotating Laser Render
+./components/gameplay/RealTimeCombatScreen.tsx:            if (e.isBoss && e.bossSkillType === 'laser' && e.bossSkillPhase === 'action' && e.currentLaserAngle !== undefined) {
+./components/gameplay/RealTimeCombatScreen.tsx:            // Draw Boss Telegraphs
+./components/gameplay/RealTimeCombatScreen.tsx:            if (e.isBoss && e.isEnraged && e.bossTelegraphPos) {
+./components/gameplay/RealTimeCombatScreen.tsx:            if (e.bossSkillType === 'aoe_slam' && e.bossSkillPhase === 'telegraph') {
+./components/gameplay/RealTimeCombatScreen.tsx:                    ctx.arc(e.bossTelegraphPos.x, e.bossTelegraphPos.y, e.bossTelegraphRadius || 50, 0, Math.PI * 2);
+./components/gameplay/RealTimeCombatScreen.tsx:                } else if (e.bossSkillType === 'dash' && (e.bossSkillPhase === 'telegraph' || e.bossSkillPhase === 'action')) {
+./components/gameplay/RealTimeCombatScreen.tsx:                    const dx = e.bossTelegraphPos.x - e.x;
+./components/gameplay/RealTimeCombatScreen.tsx:                    const dy = e.bossTelegraphPos.y - e.y;
+./components/gameplay/RealTimeCombatScreen.tsx:            if (e.isBoss) {
+./components/gameplay/RealTimeCombatScreen.tsx:            ctx.fillStyle = e.isBoss ? '#ef4444' : '#111';
+./components/gameplay/RealTimeCombatScreen.tsx:            ctx.arc(4 * sc, wobble - 8 * sc, Math.max(0, (e.isBoss ? 2.5 : 1.5) * sc), 0, Math.PI*2); 
+./components/gameplay/RealTimeCombatScreen.tsx:            // Boss Crown / Aura
+./components/gameplay/RealTimeCombatScreen.tsx:            if (e.isBoss) {
+./components/gameplay/RealTimeCombatScreen.tsx:            // Burst Bar for Boss
+./components/gameplay/RealTimeCombatScreen.tsx:        if (e.isBoss) {
+./components/gameplay/RealTimeCombatScreen.tsx:            // Bao gồm tất cả kẻ địch còn lại trên sân (đã chết hoặc còn sống khi boss chết)
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:            "role": "Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:            "role": "Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:            "role": "Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:            "role": "Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:            "role": "Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:            "role": "Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:            "role": "Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:            "role": "Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:            "role": "Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:            "role": "Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:            "role": "Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:            "role": "Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:            "role": "Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:            "role": "Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:            "role": "Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:            "role": "Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:            "role": "Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:            "role": "Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:            "role": "Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:        "role": "Boss cốt truyện",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:        "description": "Boss tại vùng Still Shore, kẻ nắm giữ những bí mật đen tối đầu tiên mà người chơi khám phá.",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:        "role": "Boss cốt truyện",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:        "description": "Boss cuối của chuỗi nhiệm vụ Di sản Giang hồ, xuất hiện tại đỉnh Halo.",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:        "role": "Thợ rèn / Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:        "role": "Chiến binh / Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:        "name": "Boss (Li Fen)",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:        "name": "Dungeon Boss - Dragon",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:    "worldSetting": "Trò chơi thực tế ảo Thần Khúc với hệ thống Boss thế giới và các phụ bản cực khó yêu cầu sự phối hợp đồng đội hoàn hảo.",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:        "description": "Boss cuối của một phụ bản cực khó."
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:        "role": "Phản diện / Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:        "role": "Phản diện / Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:        "role": "Phản diện / Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:        "name": "Sei's Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:        "role": "Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:        "role": "Boss",
+./utils/tagProcessors/287_fanfic_works_2026-03-21.json.txt:        "name": "Boss",
+./utils/tagProcessors/dungeonTagProcessor.ts:                nextStage = 'boss';
+./utils/tagProcessors/dungeonTagProcessor.ts:            case 'boss':
+./utils/tagProcessors/dungeonTagProcessor.ts:                // Cannot progress past boss, should use END_DUNGEON_CRAWL
+./utils/tagProcessors/dungeonTagProcessor.ts:                console.warn("PROGRESS_DUNGEON_STAGE: Already at the boss stage. Use END_DUNGEON_CRAWL to finish.");
+./utils/auraFarming.ts:export const handleAuraFarmingBurst = (boss: any, spawnVfx: (msg: string, x: number, y: number, color: string) => void) => {
+./utils/auraFarming.ts:    if (boss.isBoss && !boss.auraFarmingModel && (boss.auraFarmingTimer || 0) <= 0) {
+./utils/auraFarming.ts:        boss.burstPoints = (boss.burstPoints || 0) + 1;
+./utils/auraFarming.ts:        // spawnVfx(`Burst +1`, boss.x, boss.y - 40, '#facc15'); // Remove annoying VFX for every hit
+./utils/auraFarming.ts:        if (boss.burstPoints >= 20) {
+./utils/auraFarming.ts:            boss.auraFarmingTimer = 10000; // 10s
+./utils/auraFarming.ts:            boss.auraFarmingModel = 'garou';
+./utils/auraFarming.ts:            boss.burstPoints = 0;
+./utils/auraFarming.ts:            spawnVfx(`AURA FARMING: GAROU`, boss.x, boss.y - 60, '#a855f7');
+./utils/auraFarming.ts:export const updateAuraFarmingTimer = (boss: any, dt: number, s: any, spawnVfx: (msg: string, x: number, y: number, color: string) => void) => {
+./utils/auraFarming.ts:    if (boss.auraFarmingModel === 'garou' && boss.auraFarmingTimer && boss.auraFarmingTimer > 0) {
+./utils/auraFarming.ts:        boss.auraFarmingTimer -= dt;
+./utils/auraFarming.ts:        if (boss.auraFarmingTimer <= 0) {
+./utils/auraFarming.ts:            boss.auraFarmingModel = undefined;
+./utils/auraFarming.ts:            spawnVfx(`AURA KHÔNG TRỌNG LỰC`, boss.x, boss.y - 40, '#a855f7');
+./utils/auraFarming.ts:                if (p.isOrbiting && p.orbitingCenterId === boss.id) {
+./utils/auraFarming.ts:export const handleAuraFarmingBossAttack = (boss: any, target: any, s: any, getMutableStats: any) => {
+./utils/auraFarming.ts:    boss.skillCooldown = 10000; // Disable normal skills
+./utils/auraFarming.ts:    if (boss.attackCooldown <= 0 && target) {
+./utils/auraFarming.ts:        boss.attackCooldown = 500; // 0.5s per attack as requested
+./utils/auraFarming.ts:        const dx = target.x - boss.x;
+./utils/auraFarming.ts:        const dy = target.y - boss.y;
+./utils/auraFarming.ts:            x: boss.x, y: boss.y,
+./utils/auraFarming.ts:            startX: boss.x, startY: boss.y,
+./utils/auraFarming.ts:            targetId: '', sourceId: boss.id,
+./utils/auraFarming.ts:            damage: (getMutableStats(boss.combatant)?.sucTanCong || 10) * 0.4,
+./utils/auraFarming.ts:        s.entities.forEach((boss: any) => {
+./utils/auraFarming.ts:            if (boss.auraFarmingModel === 'garou' && boss.id !== p.sourceId) {
+./utils/auraFarming.ts:                if (boss.isAlly !== isAlly(p.sourceId)) {
+./utils/auraFarming.ts:                    const dist = Math.hypot(boss.x - p.x, boss.y - p.y);
+./utils/auraFarming.ts:                    if (dist < boss.radius + 150) { // Increased to 150px
+./utils/auraFarming.ts:                        p.orbitingCenterId = boss.id;
+./utils/auraFarming.ts:                        p.orbitAngle = Math.atan2(p.y - boss.y, p.x - boss.x);
+./prompts/dungeonPrompt.ts:        case 'boss':
+./prompts/dungeonPrompt.ts:3.  **Kích hoạt chiến đấu:** Sử dụng tag [BEGIN_COMBAT: opponentIds="Tên Trùm Cuối", isDungeonBossFight=true]. Tham số \`isDungeonBossFight=true\` là BẮT BUỘC.
+./hooks/useGameActions.ts:    // Dungeon Boss Fight Logic
+./hooks/useGameActions.ts:    if (workingKb.pendingCombat?.isDungeonBossFight) {
+./hooks/useGameActions.ts:                id: `dungeon-boss-victory-${Date.now()}`,
+./hooks/useGameActions.ts:    const hasTribulationBoss = result.opponentIds.some(id => {
+./hooks/useGameActions.ts:    const wasBreakthroughCombat = knowledgeBase.pendingBreakthrough || hasTribulationBoss;
+./hooks/useGameActions.ts:        const totalBosses = 1 + numAllies; // 1 base + 1 per ally
+./hooks/useGameActions.ts:        for (let i = 0; i < totalBosses; i++) {
+./hooks/useGameActions.ts:            const bossStats: Partial<PlayerStats> = {
+./hooks/useGameActions.ts:            const bossSkills: Skill[] = [];
+./hooks/useGameActions.ts:                bossSkills.push({
+./hooks/useGameActions.ts:                    id: `boss-skill-${i}-${Date.now()}`,
+./hooks/useGameActions.ts:                bossSkills.push({
+./hooks/useGameActions.ts:                    id: `boss-skill-fallback-${i}-${Date.now()}`,
+./hooks/useGameActions.ts:            const bossId = `tribulation-boss-${i}-${Date.now()}`;
+./hooks/useGameActions.ts:            const boss: NPC = {
+./hooks/useGameActions.ts:                id: bossId,
+./hooks/useGameActions.ts:                stats: bossStats,
+./hooks/useGameActions.ts:                skills: bossSkills,
+./hooks/useGameActions.ts:            newOpponents.push(boss);
+./hooks/useGameActions.ts:            newOpponentIds.push(bossId);
+./hooks/useGameActions.ts:        showNotification(`Thiên kiếp giáng lâm! ${totalBosses} Lôi Kiếp Hóa Thân đã xuất hiện!`, "warning");
+./constants/tawa_modules.ts:        Khi một sự kiện Canon bị <user> phá hủy (ví dụ: Boss bị giết sớm), Vũ trụ KHÔNG ĐƯỢC để trống.
+./constants/user_manual.ts:*   **Săn Tìm Kho Báu:** Đánh bại các Boss mạnh hoặc khám phá các bí cảnh (dungeon) thường sẽ nhận được các vật phẩm có sẵn với chỉ số và hiệu ứng tốt. Bạn có thể giữ lại để dùng hoặc bán đi để lấy vốn.
+./287_fanfic_works.txt:            "role": "Boss",
+./287_fanfic_works.txt:            "role": "Boss",
+./287_fanfic_works.txt:            "role": "Boss",
+./287_fanfic_works.txt:            "role": "Boss",
+./287_fanfic_works.txt:            "role": "Boss",
+./287_fanfic_works.txt:            "role": "Boss",
+./287_fanfic_works.txt:            "role": "Boss",
+./287_fanfic_works.txt:            "role": "Boss",
+./287_fanfic_works.txt:            "role": "Boss",
+./287_fanfic_works.txt:            "role": "Boss",
+./287_fanfic_works.txt:            "role": "Boss",
+./287_fanfic_works.txt:            "role": "Boss",
+./287_fanfic_works.txt:            "role": "Boss",
+./287_fanfic_works.txt:            "role": "Boss",
+./287_fanfic_works.txt:            "role": "Boss",
+./287_fanfic_works.txt:            "role": "Boss",
+./287_fanfic_works.txt:            "role": "Boss",
+./287_fanfic_works.txt:            "role": "Boss",
+./287_fanfic_works.txt:            "role": "Boss",
+./287_fanfic_works.txt:        "role": "Boss cốt truyện",
+./287_fanfic_works.txt:        "description": "Boss tại vùng Still Shore, kẻ nắm giữ những bí mật đen tối đầu tiên mà người chơi khám phá.",
+./287_fanfic_works.txt:        "role": "Boss cốt truyện",
+./287_fanfic_works.txt:        "description": "Boss cuối của chuỗi nhiệm vụ Di sản Giang hồ, xuất hiện tại đỉnh Halo.",
+./287_fanfic_works.txt:        "role": "Thợ rèn / Boss",
+./287_fanfic_works.txt:        "role": "Chiến binh / Boss",
+./287_fanfic_works.txt:        "name": "Boss (Li Fen)",
+./287_fanfic_works.txt:        "name": "Dungeon Boss - Dragon",
+./287_fanfic_works.txt:    "worldSetting": "Trò chơi thực tế ảo Thần Khúc với hệ thống Boss thế giới và các phụ bản cực khó yêu cầu sự phối hợp đồng đội hoàn hảo.",
+./287_fanfic_works.txt:        "description": "Boss cuối của một phụ bản cực khó."
+./287_fanfic_works.txt:        "role": "Phản diện / Boss",
+./287_fanfic_works.txt:        "role": "Phản diện / Boss",
+./287_fanfic_works.txt:        "role": "Phản diện / Boss",
+./287_fanfic_works.txt:        "name": "Sei's Boss",
+./287_fanfic_works.txt:        "role": "Boss",
+./287_fanfic_works.txt:        "role": "Boss",
+./287_fanfic_works.txt:        "name": "Boss",
+./types.ts:    stage: 'setup' | 'entry' | 'puzzle' | 'reunion' | 'boss' | 'report';
+./types.ts:        isDungeonBossFight?: boolean; 

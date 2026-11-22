@@ -1,0 +1,20 @@
+  const handleImportAccessoryPromptChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        setAccessoryPrompt(content);
+        setSuccessMessage("Đã tải prompt phụ tùng thành công.");
+        setError('');
+      } catch (err: any) {
+        setError(`Lỗi khi đọc file prompt: ${err?.message || String(err)}`);
+      }
+    };
+    reader.readAsText(file);
+    if (importAccessoryPromptRef.current) {
+      importAccessoryPromptRef.current.value = '';
+    }
+  };

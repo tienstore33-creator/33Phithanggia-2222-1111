@@ -1,0 +1,30 @@
+// Avatar Expressions (0-24)
+export const AVATAR_EXPRESSIONS = {
+  0: 'NEUTRAL_SMILE',
+  1: 'SAD',
+  2: 'LAUGHING',
+  3: 'ANGRY',
+  4: 'SMUG',
+  5: 'NEUTRAL',
+  6: 'DISAPPOINTED',
+  7: 'HAPPY',
+  8: 'FURIOUS',
+  9: 'CONFIDENT',
+  10: 'SURPRISED',
+  11: 'WINK_SMILE',
+  12: 'GENTLE_SMILE',
+  13: 'SERIOUS',
+  14: 'DETERMINED',
+  15: 'BLANK',
+  16: 'WINK',
+  17: 'WORRIED',
+  18: 'ANNOYED',
+  19: 'SKEPTICAL',
+  20: 'EXCITED',
+  21: 'BIG_LAUGH',
+  22: 'CRYING',
+  23: 'TEARS_SAD',
+  24: 'WINK_LAUGH',
+} as const;
+
+export type AvatarExpressionId = keyof typeof AVATAR_EXPRESSIONS;

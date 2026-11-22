@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nhập Vai A.I Simulator - Canvas Edition</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+        
+        body { 
+            background-color: #1a1c2c; 
+            color: #e2e8f0; 
+            margin: 0; 
+            padding: 0; 
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+
+        .main-gradient-text {
+            background: linear-gradient(to right, #9168f8, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 900;
+        }
+
+        /* Nút menu chính */
+        .btn-menu {
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .btn-menu:active { transform: scale(0.97); }
+        .btn-menu:hover { filter: brightness(1.1); }
+
+        /* Các dải màu chuẩn theo hình */
+        .bg-gradient-play { background: linear-gradient(to right, #9333ea, #db2777); }
+        .bg-gradient-load { background: linear-gradient(to right, #4b5563, #374151); } /* Greyish */
+        .bg-gradient-file { background: linear-gradient(to right, #0891b2, #2563eb); }
+        .bg-gradient-update { background: linear-gradient(to right, #22c55e, #10b981); }
+        .bg-gradient-settings { background: linear-gradient(to right, #4b5563, #374151); }
+
+        .icon-box {
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 6px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 10px; }
+        
+        .chat-area {
+            height: calc(100vh - 160px);
+        }
+
+        .glass {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Thành phần nút menu
+        const MenuButton = ({ icon: iconName, text, subtext, gradient, onClick }) => {
+            const IconComponent = lucide[iconName] || lucide.Circle;
+            return (
+                <button 
+                    onClick={onClick}
+                    className={`w-full max-w-sm py-3 px-5 rounded-xl flex items-center gap-4 text-white font-bold text-base md:text-lg btn-menu ${gradient}`}
+                >
+                    <div className="icon-box">
+                        <IconComponent className="w-5 h-5 text-blue-300" />
+                    </div>
+                    <div className="flex-1 text-center pr-8">
+                        {text} {subtext && <span className="opacity-70 font-medium">({subtext})</span>}
+                    </div>
+                </button>
+            );
+        };
+
+        function App() {
+            const [gameState, setGameState] = useState('menu'); 
+            const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
+            const [messages, setMessages] = useState([]);
+            const [input, setInput] = useState('');
+            const [isLoading, setIsLoading] = useState(false);
+            const messagesEndRef = useRef(null);
+            const audioRef = useRef(null);
+
+            // Xử lý nhạc nền cho màn hình Settings
+            useEffect(() => {
+                if (gameState === 'settings') {
+                    // Tạo đối tượng audio mới khi vào settings
+                    const audio = new Audio('./background2.mp3');
+                    audio.loop = true;
+                    audio.play().catch(err => console.log("Không thể phát nhạc tự động:", err));
+                    audioRef.current = audio;
+                } else {
+                    // Tắt nhạc khi thoát khỏi settings
+                    if (audioRef.current) {
+                        audioRef.current.pause();
+                        audioRef.current.currentTime = 0;
+                        audioRef.current = null;
+                    }
+                }
+                
+                // Cleanup khi component unmount
+                return () => {
+                    if (audioRef.current) {
+                        audioRef.current.pause();
+                        audioRef.current = null;
+                    }
+                };
+            }, [gameState]);
+
+            useEffect(() => {
+                if (window.lucide) window.lucide.createIcons();
+            }, [gameState, messages]);
+
+            const scrollToBottom = () => {
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            };
+
+            useEffect(() => {
+                if (gameState === 'playing') scrollToBottom();
+            }, [messages]);
+
+            const handleSend = async (text) => {
+                if (!text.trim() || isLoading) return;
+                
+                const newMessages = [...messages, { role: 'user', text: text.trim() }];
+                setMessages(newMessages);
+                setInput('');
+                setIsLoading(true);
+
+                // Mô phỏng AI cho bản Canvas (bạn có thể tích hợp API thật ở đây)
+                setTimeout(() => {
+                    const aiText = "Bạn đang ở trong một thế giới huyền bí. Sương mù tan dần tiết lộ một lối mòn dẫn sâu vào rừng.\n\nLựa chọn:\n1. Đi theo lối mòn.\n2. Quay lại tìm thị trấn.\n3. Dựng trại nghỉ ngơi.";
+                    setMessages(prev => [...prev, { role: 'ai', text: aiText }]);
+                    setIsLoading(false);
+                }, 1500);
+            };
+
+            if (gameState === 'menu') {
+                return (
+                    <div className="h-screen flex flex-col items-center justify-center p-4 bg-[#1a1c2c]">
+                        <h1 className="text-4xl md:text-5xl mb-12 main-gradient-text text-center px-4">
+                            Nhập Vai A.I Simulator
+                        </h1>
+
+                        <div className="w-full flex flex-col items-center gap-4 sm:gap-5">
+                            <MenuButton 
+                                icon="PlayCircle" 
+                                text="Bắt Đầu Cuộc Phiêu Lưu Mới" 
+                                gradient="bg-gradient-play"
+                                onClick={() => setGameState('playing')}
+                            />
+                            
+                            <MenuButton 
+                                icon="Save" 
+                                text="Tải Game Đã Lưu" 
+                                subtext="0"
+                                gradient="bg-gradient-load"
+                            />
+
+                            <MenuButton 
+                                icon="Folder" 
+                                text="Tải Game Từ Tệp (.json)" 
+                                gradient="bg-gradient-file"
+                            />
+
+                            <MenuButton 
+                                icon="Megaphone" 
+                                text="Xem Cập Nhật Game" 
+                                gradient="bg-gradient-update"
+                            />
+
+                            <MenuButton 
+                                icon="Settings" 
+                                text="Thiết Lập API Gemini" 
+                                gradient="bg-gradient-settings"
+                                onClick={() => setGameState('settings')}
+                            />
+
+                            <div className="mt-10 text-center">
+                                <p className="text-blue-400 text-xs md:text-sm font-semibold tracking-wide underline decoration-blue-500/30 underline-offset-4">
+                                    Đang dùng Gemini AI Mặc Định: Không cần API Key
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (gameState === 'settings') {
+                return (
+                    <div className="h-screen flex items-center justify-center p-6 bg-[#1a1c2c]">
+                        <div className="glass w-full max-w-md p-8 rounded-3xl shadow-2xl">
+                            <h2 className="text-xl font-bold text-white mb-4">Cấu hình API Gemini</h2>
+                            <input 
+                                type="password" 
+                                value={apiKey}
+                                onChange={(e) => {
+                                    setApiKey(e.target.value);
+                                    localStorage.setItem('gemini_api_key', e.target.value);
+                                }}
+                                placeholder="Nhập API Key tại đây..."
+                                className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                            <button onClick={() => setGameState('menu')} className="w-full mt-6 py-4 bg-purple-600 rounded-xl font-bold">Lưu & Quay Lại</button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="flex flex-col h-screen bg-[#0f111a]">
+                    <header className="p-4 glass flex justify-between items-center shadow-xl">
+                        <button onClick={() => setGameState('menu')} className="text-slate-400 hover:text-white flex items-center gap-1 font-bold text-sm uppercase tracking-tighter">
+                            <lucide.ChevronLeft className="w-4 h-4" /> Quay lại
+                        </button>
+                        <h2 className="font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">MÀN CHƠI</h2>
+                        <div className="w-8"></div>
+                    </header>
+
+                    <div className="flex-1 overflow-y-auto p-4 md:p-10 space-y-6 custom-scrollbar chat-area">
+                        <div className="max-w-3xl mx-auto space-y-6">
+                            {messages.map((msg, i) => (
+                                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                    <div className={`p-5 rounded-2xl max-w-[85%] shadow-md whitespace-pre-wrap ${
+                                        msg.role === 'user' ? 'bg-purple-600 text-white rounded-br-none' : 'bg-slate-800 text-slate-100 rounded-bl-none border border-slate-700'
+                                    }`}>
+                                        {msg.text}
+                                    </div>
+                                </div>
+                            ))}
+                            {isLoading && (
+                                <div className="flex justify-start">
+                                    <div className="bg-slate-800 p-4 rounded-2xl flex gap-2">
+                                        <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"></div>
+                                        <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce [animation-delay:0.2s]"></div>
+                                        <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce [animation-delay:0.4s]"></div>
+                                    </div>
+                                </div>
+                            )}
+                            <div ref={messagesEndRef} />
+                        </div>
+                    </div>
+
+                    <div className="p-4 glass">
+                        <div className="max-w-3xl mx-auto flex gap-2">
+                            <input 
+                                type="text" 
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleSend(input)}
+                                placeholder="Bạn sẽ làm gì tiếp theo?"
+                                className="flex-1 bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-3 text-white outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                            <button onClick={() => handleSend(input)} className="bg-purple-600 p-4 rounded-xl text-white shadow-lg shadow-purple-900/40">
+                                <lucide.Send className="w-6 h-6" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

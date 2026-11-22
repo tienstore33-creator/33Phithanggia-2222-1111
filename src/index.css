@@ -1,0 +1,95 @@
+/* src/index.css */
+
+/**
+ * Utility: Scroll Anchoring
+ * Giúp trình duyệt giữ nguyên vị trí hiển thị của các phần tử đang nằm trong viewport
+ * khi có nội dung mới được thêm vào hoặc thay đổi kích thước ở phía dưới.
+ */
+.keep-scroll-anchor {
+  /* Kích hoạt cơ chế neo cuộn tự động của trình duyệt */
+  overflow-anchor: auto !important;
+}
+
+/* 
+   Đảm bảo các phần tử con không tự ý tranh chấp quyền neo cuộn, 
+   chỉ container chính mới có quyền quyết định vị trí.
+*/
+.keep-scroll-anchor > * {
+  overflow-anchor: none;
+}
+
+/* Hiệu ứng bầu trời sao màu xanh về đêm chuyển động lấp lánh (Starry Shimmer) */
+@keyframes starry-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes float-sparkle {
+  0%, 100% {
+    transform: translateY(0) scale(1) rotate(0deg);
+    opacity: 0.3;
+  }
+  50% {
+    transform: translateY(-5px) scale(1.3) rotate(180deg);
+    opacity: 1;
+  }
+}
+
+.starry-shimmer-bg {
+  background: linear-gradient(135deg, #091026 0%, #0d1e4c 25%, #1e3a8a 50%, #0d1e4c 75%, #091026 100%);
+  background-size: 200% 200%;
+  animation: starry-shimmer 4s ease infinite;
+}
+
+.sparkle-particle {
+  animation: float-sparkle 3s ease-in-out infinite;
+}
+
+/* Sacred Timeline Gold Frame & Flying Sparkles */
+@keyframes sacred-sparkle-float {
+  0% {
+    transform: translateY(0px) translateX(0px) scale(0.6) rotate(0deg);
+    opacity: 0.2;
+  }
+  50% {
+    transform: translateY(-8px) translateX(6px) scale(1.3) rotate(180deg);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translateY(-16px) translateX(-4px) scale(0.5) rotate(360deg);
+    opacity: 0.1;
+  }
+}
+
+.sacred-particle-dot {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fef08a 0%, #f59e0b 80%, #d97706 100%);
+  box-shadow: 0 0 6px #f59e0b, 0 0 10px #fef08a;
+  animation: sacred-sparkle-float 3s ease-in-out infinite;
+}
+
+@keyframes gold-border-glow {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.45), inset 0 0 10px rgba(252, 211, 77, 0.15);
+    border-color: rgba(251, 191, 36, 0.9);
+  }
+  50% {
+    box-shadow: 0 0 22px rgba(245, 158, 11, 0.8), inset 0 0 18px rgba(252, 211, 77, 0.35);
+    border-color: rgba(254, 240, 138, 1);
+  }
+}
+
+.sacred-timeline-gold-frame {
+  animation: gold-border-glow 2.5s infinite ease-in-out;
+}
+
+

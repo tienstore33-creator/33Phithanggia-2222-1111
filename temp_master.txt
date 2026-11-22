@@ -1,0 +1,12 @@
+      case 'master':
+        const master = entity as Master;
+        return (
+          <>
+            <p><strong className="text-indigo-300">Thân phận:</strong> Chủ Nhân</p>
+            {master.title && <p><strong className="text-indigo-300">Chức danh:</strong> {master.title}</p>}
+            <p><strong className="text-indigo-300">Cảnh giới:</strong> {master.realm || "Không rõ"}</p>
+            <p><strong className="text-indigo-300">Thiện cảm:</strong> {master.favor || master.affinity}</p>
+            <p><strong className="text-indigo-300">Tâm trạng:</strong> {master.mood}</p>
+            {master.description && <p className="text-xs mt-1 italic text-gray-400">{master.description.substring(0,100)}{master.description.length > 100 ? '...' : ''}</p>}
+          </>
+        );

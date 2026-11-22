@@ -1,0 +1,9 @@
+{
+  "name": " flash 3 preview 33phithanggia",
+  "description": "Bản cook tưởng nhớ Neon Wisp, cám ơn Thích Ma Lão Đại và trân trọng đồng chí abcxyz",
+  "requestFramePermissions": [],
+  "prompt": "",
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

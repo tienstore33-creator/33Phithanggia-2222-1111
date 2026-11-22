@@ -1,0 +1,139 @@
+utils/realmParser.ts:6:  const rawParts = input.split('-').map(s => s.trim()).filter(Boolean);
+utils/realmParser.ts:38:  const lines = input.split('\n').map(l => l.trim()).filter(Boolean);
+utils/tagProcessors/companionAndPrisonerTagProcessor.ts:457:      newKb.combatCompanionIds = newKb.combatCompanionIds.filter(
+utils/tagProcessors/companionAndPrisonerTagProcessor.ts:740:      newKb.combatCompanionIds = newKb.combatCompanionIds.filter(
+utils/tagProcessors/companionAndPrisonerTagProcessor.ts:830:    newKb.wives = newKb.wives.filter((w) => w.name !== name);
+utils/tagProcessors/companionAndPrisonerTagProcessor.ts:852:    newKb.slaves = newKb.slaves.filter((s) => s.name !== name);
+utils/tagProcessors/companionAndPrisonerTagProcessor.ts:874:    newKb.prisoners = newKb.prisoners.filter((p) => p.name !== name);
+utils/tagProcessors/skillTagProcessor.ts:129:        otherEffects: tagParams.otherEffects ? tagParams.otherEffects.split(';').map(s=>s.trim()).filter(s=>s) : (detailedEffectContent ? [detailedEffectContent] : undefined),
+utils/tagProcessors/skillTagProcessor.ts:345:        skillToUpdate.otherEffects = newEffect!.split(';').map(s=>s.trim()).filter(s=>s);
+utils/tagProcessors/memoryTagProcessor.ts:66:    const entityMemories = newKb.coreMemories.filter(m => m.entityId === entityId);
+utils/tagProcessors/relationshipTagProcessor.ts:224:        sourceEntity.relationships = sourceEntity.relationships.filter(r => r.targetId !== targetIdRef && r.targetName !== finalTargetName);
+utils/tagProcessors/relationshipTagProcessor.ts:242:        sourceEntity.relationships = sourceEntity.relationships.filter(r => r.targetId !== targetIdRef && r.targetName !== finalTargetName);
+utils/tagProcessors/combatTagProcessor.ts:382:    const opponentNamesOrIds = opponentIdsStr.split(',').map(id => id.trim()).filter(id => id);
+utils/tagProcessors/combatTagProcessor.ts:386:    const allyNamesOrIds = allyIdsStr ? allyIdsStr.split(',').map(id => id.trim()).filter(id => id) : [];
+utils/tagProcessors/combatTagProcessor.ts:389:    const surrenderedNpcIds = tagParams.surrenderedNpcIds?.split(',').map(id => id.trim()).filter(id => id) || [];
+utils/tagProcessors/systemInfoTagProcessor.ts:28:        newKb.realmProgressionList = realmListStr.split(' - ').map(s => s.trim()).filter(Boolean);
+utils/tagProcessors/factionTagProcessor.ts:123:    newKb.discoveredFactions = newKb.discoveredFactions.filter(f => f.name !== name);
+utils/tagProcessors/statusEffectTagProcessor.ts:50:    const specialEffects = specialEffectsStr ? specialEffectsStr.split(';').map(s => s.trim()).filter(s => s) : [];
+utils/tagProcessors/statusEffectTagProcessor.ts:68:        newKb.playerStats.activeStatusEffects = newKb.playerStats.activeStatusEffects.filter(eff => eff.name !== newEffect.name);
+utils/tagProcessors/statusEffectTagProcessor.ts:95:            foundNpc.stats.activeStatusEffects = foundNpc.stats.activeStatusEffects.filter((eff: any) => eff.name !== newEffect.name);
+utils/tagProcessors/statusEffectTagProcessor.ts:129:        newKb.playerStats.activeStatusEffects = newKb.playerStats.activeStatusEffects.filter(eff => eff.name !== name);
+utils/tagProcessors/statusEffectTagProcessor.ts:154:            foundNpc.stats.activeStatusEffects = foundNpc.stats.activeStatusEffects.filter((eff: any) => eff.name !== name);
+utils/tagProcessors/npcTagProcessor.ts:294:            .filter((c) =>
+utils/tagProcessors/timeTagProcessor.ts:101:                .filter(eff => eff.durationTurns === undefined || eff.durationTurns > 0);
+utils/tagProcessors/questTagProcessor.ts:232:                    ...newKb.playerStats.activeStatusEffects.filter((eff: any) => eff.name !== buffName),
+utils/tagProcessors/questTagProcessor.ts:298:            ...newKb.playerStats.activeStatusEffects.filter((eff: any) => eff.name !== buffName),
+utils/tagProcessors/questTagProcessor.ts:386:                ...newKb.playerStats.activeStatusEffects.filter((eff: any) => eff.name !== debuffName),
+utils/tagProcessors/locationTagProcessor.ts:186:            .filter(l => l.mapX !== undefined && l.mapY !== undefined)
+utils/tagProcessors/locationTagProcessor.ts:496:                    return loc.connections.filter(c => c.isDiscovered).length;
+utils/tagProcessors/locationTagProcessor.ts:638:        .filter(l => !l.parentLocationId)
+utils/tagProcessors/locationTagProcessor.ts:682:            loc.connections = loc.connections.filter(conn => conn.isPlayerCreated === true);
+utils/tagProcessors/itemTagProcessor.ts:141:                uniqueEffects: tagParams.uniqueEffectsList ? tagParams.uniqueEffectsList.split(';').map(s => s.trim()).filter(s => s) : []
+utils/tagProcessors/itemTagProcessor.ts:154:                effects: tagParams.effectsList ? tagParams.effectsList.split(';').map(s => s.trim()).filter(s => s) : [],
+utils/locationEvents.ts:126:    const vendorsInLocation = newKb.discoveredNPCs.filter(npc =>
+utils/locationEvents.ts:131:    const vendorsToRestock = vendorsInLocation.filter(vendor =>
+utils/paginationUtils.ts:17:  const messages = allGameMessages.filter(msg => 
+utils/tagProcessingUtils.ts:126:    const yeuThuAppearCount = uniqueTagBatch.filter(tag => tag.toUpperCase().startsWith('[YEUTHU_APPEAR')).length;
+utils/map/autoExpander.ts:52:    const allMainLocations = newKb.discoveredLocations.filter(l => !l.parentLocationId && l.id !== currentLocationId);
+utils/map/autoExpander.ts:55:    const candidates = allMainLocations.filter(l => 
+utils/monolithicParser.ts:51:            .filter(line => line.startsWith('[') && line.endsWith(']'));
+utils/combatStatusManager.ts:141:      .filter((e: any) => (e.duration || 0) > 0);
+utils/modelFallback.ts:61:      const filtered = chain.filter(m => settings.availableModels?.includes(m));
+utils/modelFallback.ts:81:      let list = [chosenModel, ...fallback.customList.filter((m: any) => m !== chosenModel)];
+utils/modelFallback.ts:88:          list = [lastWin, ...list.filter(m => m !== lastWin)];
+utils/modelFallback.ts:125:      return [chosen, ...FLASH_FALLBACK_CHAIN.filter(m => m !== chosen)];
+utils/modelFallback.ts:158:        const keys = (settings.userApiKeys || []).filter(k => k && k.trim() !== '');
+utils/textHighlighting.tsx:71:                kb.allQuests.filter(q => q.status === 'active').forEach(e => { if (typeof e.title === 'string' && e.title.trim().length > 2) allKeywords.push({ name: e.title.trim(), type: 'quest', entity: e }); });
+utils/npcHelper.ts:15:  const filteredNpcs = npcs.filter((npc) => {
+utils/equipmentGenerator.ts:66:        const available = pool.filter(p => !usedPassives.has(p));
+utils/gameLogicUtils.ts:193:  const turnMetadatas = kb.ragVectorStore.metadata.filter((m: any) => m.entityType === 'turn' && m.text && m.turn !== undefined);
+utils/BackgroundTaskManager.ts:45:      this.listeners = this.listeners.filter(l => l !== listener);
+utils/summarizationHelper.ts:14:        .filter(msg => (msg.turnNumber ?? 0) >= startTurn && (msg.turnNumber ?? 0) <= endTurn)
+utils/summarizationHelper.ts:15:        .filter(msg => ['narration', 'player_action', 'event_summary'].includes(msg.type))
+utils/narrationContext.ts:7:    .filter(m => m.type === 'narration')
+utils/yeuThuUtils.ts:41:    const candidates = YEU_THU_TIERED_DATABASE.filter(yt => 
+utils/attributeParser.ts:125:             const existingCount = Object.keys(res).filter(key => key.startsWith('position_var_')).length;
+hooks/actions/useStartingElementsActions.ts:26:        const majorRealms = settings.cultivationSystem.majorRealmsRaw.split('\n').map(r => r.split('|')[0].trim()).filter(Boolean);
+hooks/actions/useAuctionActions.ts:264:                        ...workingKb.playerStats.activeStatusEffects.filter((eff: any) => eff.name !== debuffName),
+hooks/actions/useAuctionActions.ts:331:            const candidates = npcs.filter((npc: any) => {
+hooks/actions/useAuctionActions.ts:753:                        ...workingKb.playerStats.activeStatusEffects.filter((eff: any) => eff.name !== debuffName),
+hooks/actions/useAuctionActions.ts:822:            const candidates = npcs.filter((npc: any) => {
+hooks/useMainGameLoop.ts:348:            const turnMessagesAtStart = gameMessages.filter(m => m.type === 'narration' || m.type === 'player_action');
+hooks/useMainGameLoop.ts:357:                .filter(m => m.turnNumber >= cutoffTurnForAI)
+hooks/useMainGameLoop.ts:382:                .filter(Boolean)
+hooks/useMainGameLoop.ts:385:            const prunedNarrationContext = getRecentNarrations(gameMessages.filter(m => m.turnNumber >= cutoffTurnForAI));
+hooks/useMainGameLoop.ts:1054:                        .filter((effect: any) => effect.durationTurns !== 0); 
+hooks/useMainGameLoop.ts:1284:            const previousNarration = gameMessagesAtActionStart.filter(m => m.type === 'narration').slice(-1)[0]?.content || "";
+hooks/useMainGameLoop.ts:1484:                            .filter(([key, val]) => val && !val.startsWith("CHAPTER_SUMMARY::"))
+hooks/useMainGameLoop.ts:1499:                                    .filter(val => val && val.startsWith("CHAPTER_SUMMARY::"))
+hooks/useCharacterSuggestions.ts:13:    return selectedWork.characters.filter(char => 
+hooks/useStoryPagination.ts:32:        const visibleMessages = messages.filter((m) => {
+hooks/useGameSetupState.ts:106:                newItem.equipmentDetails.uniqueEffects = newItem.equipmentDetails.uniqueEffectsString.split(';').map(s => s.trim()).filter(Boolean);
+hooks/useGameSetupState.ts:230:        raceCultivationSystems: prev.raceCultivationSystems.filter(sys => sys.id !== idToRemove)
+hooks/useGameSetupState.ts:274:  const removeStartingSkill = (index: number) => setSettings(prev => ({ ...prev, startingSkills: (prev.startingSkills || []).filter((_, i) => i !== index) }));
+hooks/useGameSetupState.ts:337:  const removeStartingItem = (index: number) => setSettings(prev => ({ ...prev, startingItems: (prev.startingItems || []).filter((_, i) => i !== index) }));
+hooks/useGameSetupState.ts:341:  const removeStartingNPC = (index: number) => setSettings(prev => ({ ...prev, startingNPCs: (prev.startingNPCs || []).filter((_, i) => i !== index) }));
+hooks/useGameSetupState.ts:351:  const removeStartingYeuThu = (index: number) => setSettings(prev => ({ ...prev, startingYeuThu: (prev.startingYeuThu || []).filter((_, i) => i !== index) }));
+hooks/useGameSetupState.ts:355:  const removeStartingLore = (index: number) => setSettings(prev => ({ ...prev, startingLore: (prev.startingLore || []).filter((_, i) => i !== index) }));
+hooks/useGameSetupState.ts:372:  const removeStartingLocation = (index: number) => setSettings(prev => ({ ...prev, startingLocations: (prev.startingLocations || []).filter((_, i) => i !== index) }));
+hooks/useGameSetupState.ts:376:  const removeStartingFaction = (index: number) => setSettings(prev => ({ ...prev, startingFactions: (prev.startingFactions || []).filter((_, i) => i !== index) }));
+hooks/useGameActions.ts:393:        const playerMemories = knowledgeBase.coreMemories.filter(m => m.entityId === 'player');
+hooks/useGameActions.ts:757:    kbToModify.coreMemories = kbToModify.coreMemories.filter(m => m.entityId !== 'player');
+hooks/useGameActions.ts:1060:                workingKb.wives = workingKb.wives.filter(w => w.id !== status.id);
+hooks/useGameActions.ts:1061:                workingKb.slaves = workingKb.slaves.filter(s => s.id !== status.id);
+hooks/useGameActions.ts:1062:                workingKb.prisoners = workingKb.prisoners.filter(p => p.id !== status.id);
+hooks/useGameActions.ts:1063:                workingKb.discoveredNPCs = workingKb.discoveredNPCs.filter(n => n.id !== status.id);
+hooks/useGameActions.ts:1064:                workingKb.companions = workingKb.companions.filter(c => c.id !== status.id);
+hooks/useGameActions.ts:1065:                workingKb.combatCompanionIds = workingKb.combatCompanionIds.filter(id => id !== status.id);
+hooks/useGameActions.ts:1138:        workingKb.discoveredNPCs = workingKb.discoveredNPCs.filter((npc: NPC) => !opponentIdsToDelete.includes(npc.id));
+hooks/useGameActions.ts:1151:                    progressionList = raceSystem.realmSystem.split(' - ').map(s => s.trim()).filter(Boolean);
+hooks/useGameActions.ts:1312:            const deadAllies = result.finalAlliesStatus.filter(a => a.hp <= 0);
+hooks/useGameActions.ts:1657:                vendor.slavesForSale = vendor.slavesForSale.filter((s: Slave) => s.id !== slave.id);
+hooks/useGameActions.ts:1934:                newKb.combatCompanionIds = newKb.combatCompanionIds.filter((id: string) => id !== personId);
+hooks/useGameActions.ts:2226:            .filter(m => m.type === 'narration')
+hooks/useGameActions.ts:2411:    const npcsInZone = knowledgeBase.discoveredNPCs.filter(npc => npc.locationId === zoneStub.name);
+services/skillTransformationService.ts:12:    return currentSkills.filter(skill => {
+services/quest/QuestGenerator.ts:14:        const activeQuestsCount = kb.allQuests.filter(q => q.status === 'active').length;
+services/RealmValidatorService.ts:28:    ].filter(Boolean);
+services/ai/monolithicParser.ts:52:        .filter(line => line.length > 0 && !line.startsWith('(') && !line.startsWith('<')); // Filter out empty lines, instructions, and tags
+services/ai/monolithicParser.ts:63:        .filter(line => line.startsWith('[') && line.endsWith(']'));
+services/ai/cultivationUnifiedService.ts:43:      const keys = (settings.userApiKeys || []).filter(k => k && k.trim() !== '');
+services/ai/contextAnalyzer.ts:57:        const keys = (settings.userApiKeys || []).filter(k => k && k.trim() !== '');
+services/ai/contextAnalyzer.ts:78:        return allNpcs.filter(n => activeIds.includes(n.id));
+services/ai/contextAnalyzer.ts:83:        return allNpcs.filter(n => n.locationId === kb.currentLocationId).slice(0, 5);
+services/ai/promptBuilders.ts:60:    const activeModules = DEFAULT_PRESET_CONFIG.modules.filter(m => {
+services/ai/promptBuilders.ts:69:    const topModules = sortedModules.filter(m => m.position === 'top');
+services/ai/promptBuilders.ts:70:    const systemModules = sortedModules.filter(m => m.position === 'system');
+services/ai/promptBuilders.ts:71:    const bottomModules = sortedModules.filter(m => m.position === 'bottom');
+services/ai/promptBuilders.ts:72:    const finalModules = sortedModules.filter(m => m.position === 'final');
+services/ai/promptBuilders.ts:99:                .filter(q => 
+services/indexedDBService.ts:171:        .filter(item => item.userId === LOCAL_USER_ID) 
+services/ItemStatService.ts:111:      .filter(Boolean);
+services/geminiStreamService.ts:36:      const keys = (settings.userApiKeys || []).filter(k => k && k.trim() !== '');
+services/CombatContextService.ts:9:        .filter(msg => msg.type === 'narration' || msg.type === 'player_action')
+services/geminiService.ts:75:    const aiEntries = kb.currentTurnLog.filter(
+services/geminiService.ts:566:        ].filter(npc => npc.id !== knowledgeBase.master?.id);
+services/geminiService.ts:1166:        const characters = charNamesStr ? charNamesStr.split(',').map((c: string) => c.trim()).filter(Boolean) : [];
+services/geminiService.ts:2035:             const keys = (settings.userApiKeys || []).filter(k => k && k.trim() !== '');
+services/CombatEquipmentGenerator.ts:104:        const playerEquipCount = Object.values(kb.equippedItems).filter(item => item !== null).length;
+services/KnowledgeMapService.ts:36:      .filter((_, index) => index % step === 0)
+services/cultivationExitService.ts:28:    const nearbyNpcs = knowledgeBase.discoveredNPCs.filter(n => n.locationId === knowledgeBase.currentLocationId);
+services/apiService.ts:53:    const keys = (settings.userApiKeys || []).filter(k => k && k.trim() !== '');
+services/apiService.ts:65:    const keys = (settings.userApiKeys || []).filter(k => k && k.trim() !== '');
+services/apiService.ts:134:        const validKeys = (settings.userApiKeys || []).filter(k => k && k.trim() !== '');
+services/apiService.ts:186:            currentGroupIndexForUI = (currentGroupIndexForUI + 1) % settings.userApiKeys.filter(k => k && k.trim() !== '').length;
+services/NpcLifecycleManager.ts:50:      knowledgeBase.discoveredNPCs = knowledgeBase.discoveredNPCs.filter(n => n.id !== npcId);
+services/NpcLifecycleManager.ts:53:      knowledgeBase.companions = knowledgeBase.companions.filter(n => n.id !== npcId);
+services/NpcLifecycleManager.ts:56:      (knowledgeBase as any).wives = (knowledgeBase as any).wives.filter((n: any) => n.id !== npcId);
+services/NpcLifecycleManager.ts:59:      (knowledgeBase as any).slaves = (knowledgeBase as any).slaves.filter((n: any) => n.id !== npcId);
+services/NpcLifecycleManager.ts:62:      (knowledgeBase as any).prisoners = (knowledgeBase as any).prisoners.filter((n: any) => n.id !== npcId);
+services/NpcLifecycleManager.ts:178:        const candidatePool = activeNpcs.filter(npc => {
+services/DynamicMemoryService.ts:41:    .filter(entry => entry.sticky || entry.weight > 0.5)
+services/RealmParserService.ts:7:        return input.split('-').map(s => s.trim()).filter(Boolean);
+services/RealmParserService.ts:16:        return input.split('-').map(s => s.trim()).filter(Boolean);
+services/embeddingService.ts:194:        const hasUserKeys = settings.userApiKeys && settings.userApiKeys.filter(k => k && k.trim()).length > 0;
+services/VectorizationManager.ts:335:                resolve(jobs.filter(j => j.status !== 'completed'));
+services/dataExtractionService.ts:127:                const rawTags = parsed.tags.filter(tag => typeof tag === 'string');
+services/dataExtractionService.ts:156:            const pendingQuests = knowledgeBase?.allQuests?.filter((q: any) => q.status === 'pending') || [];
+services/dataExtractionService.ts:223:                    const rawTags = parsed.tags.filter((tag: any) => typeof tag === 'string');

@@ -1,0 +1,232 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Role Play AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      html, body {
+        height: 100%;
+        height: 100dvh;
+        margin: 0;
+        padding: 0;
+        overflow: hidden; /* Lock main body viewport and prevent browser bouncing/scrolling */
+      }
+      html {
+        font-size: 16px; /* Base font size */
+      }
+      @media (max-width: 640px) {
+        html {
+          font-size: 14px; /* Slightly smaller on mobile */
+        }
+      }
+      body {
+        background-color: #111827; /* Tailwind bg-gray-900 */
+        color: #f3f4f6; /* Tailwind text-gray-100 */
+        font-family: 'Inter', sans-serif; /* A common Tailwind font stack */
+      }
+      #root {
+        height: 100%;
+        width: 100%;
+      }
+      /* Custom scrollbar for webkit browsers */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #1f2937; /* gray-800 */
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #4f46e5; /* indigo-600 */
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #4338ca; /* indigo-700 */
+      }
+
+      /* Custom font declaration */
+      @font-face {
+        font-family: 'Bookerly';
+        src: url('/fonts/bookerly.ttf') format('truetype');
+        font-weight: normal;
+        font-style: normal;
+      }
+      
+      /* Combat Notifications */
+      @keyframes fadeInOutRight {
+        0% { opacity: 0; transform: translateX(100%); }
+        15%, 85% { opacity: 1; transform: translateX(0); }
+        100% { opacity: 0; transform: translateX(100%); }
+      }
+      .animate-fade-in-out {
+        animation: fadeInOutRight 3s ease-in-out forwards;
+      }
+
+      /* --- COMBAT VFX ANIMATIONS --- */
+      
+      /* 1. Projectile Flight (ARC MOTION) */
+      @keyframes fly-along-path {
+        0% {
+          offset-distance: 0%;
+          opacity: 0.5;
+          transform: scale(0.5);
+        }
+        10% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        90% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        100% {
+          offset-distance: 100%;
+          opacity: 0;
+          transform: scale(0.5);
+        }
+      }
+
+      .animate-comet {
+        /* offset-path is set inline in React */
+        /* animation is now set inline in React to allow for dynamic timing functions */
+        offset-rotate: auto; /* Aligns the comet with the curve */
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 40px; /* Container size */
+        height: 10px;
+        pointer-events: none;
+        z-index: 60;
+      }
+
+      /* The glowing head of the comet */
+      .comet-head {
+        width: 10px;
+        height: 10px;
+        background-color: currentColor;
+        border-radius: 50%;
+        box-shadow: 0 0 10px 2px currentColor;
+        position: absolute;
+        right: 0; /* Head is at the front */
+        top: 0;
+      }
+
+      /* The fading tail segment */
+      .comet-tail-segment {
+        position: absolute;
+        top: 2px;
+        right: 5px;
+        width: 20px; /* Shorter segments for better flexibility */
+        height: 6px;
+        background: currentColor;
+        border-radius: 50%;
+        filter: blur(3px); /* Softer look */
+        pointer-events: none;
+      }
+
+      .black-flash-projectile {
+        filter: drop-shadow(0 0 15px #a855f7) brightness(1.5);
+      }
+      .black-flash-projectile .comet-tail-segment {
+        filter: blur(4px) drop-shadow(0 0 5px #a855f7);
+      }
+
+      .status-badge {
+        display: inline-block;
+        padding: 2px 6px;
+        margin: 2px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: bold;
+        color: white;
+      }
+      .badge-buff { background-color: #10b981; }
+      .badge-debuff { background-color: #ef4444; }
+      @keyframes float-up {
+        0% { 
+            opacity: 1; 
+            transform: translateY(0) scale(1); 
+        }
+        100% { 
+            opacity: 0; 
+            transform: translateY(-40px) scale(1.2); 
+        }
+      }
+      .animate-float-up {
+        animation: float-up 0.8s ease-out forwards;
+      }
+
+      /* 3. Shake Effect (On Hit) */
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+        20%, 40%, 60%, 80% { transform: translateX(4px); }
+      }
+      .animate-shake {
+        animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+      }
+
+      /* Counter Minigame Preview */
+      @keyframes expand-and-fade {
+        0% {
+          transform: translate(-50%, -50%) scale(0);
+          opacity: 0.8;
+        }
+        100% {
+          transform: translate(-50%, -50%) scale(1.2); /* Expand slightly larger than the target */
+          opacity: 0;
+        }
+      }
+
+      .animate-expand-fade {
+        animation: expand-and-fade 300ms ease-out forwards;
+      }
+
+      /* Streaming Mode Blinking Cursor */
+      @keyframes blink {
+        50% { opacity: 0; }
+      }
+      .blinking-cursor {
+        display: inline-block;
+        width: 8px;
+        height: 1em;
+        background-color: currentColor;
+        margin-left: 2px;
+        animation: blink 1s step-end infinite;
+      }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Performance Optimizations -->
+    <link rel="preconnect" href="https://esm.sh" crossorigin />
+<script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.31.0",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "fast-json-patch": "https://aistudiocdn.com/fast-json-patch@^3.1.1",
+    "pako": "https://aistudiocdn.com/pako@^2.1.0",
+    "crypto": "https://aistudiocdn.com/crypto@^1.0.1",
+    "@netlify/functions": "https://aistudiocdn.com/@netlify/functions@^5.1.0"
+  }
+}
+</script>
+    <link rel="modulepreload" href="/index.tsx" />
+    <link rel="modulepreload" href="https://esm.sh/react@19.0.0" />
+    <link rel="modulepreload" href="https://esm.sh/react-dom@19.0.0/client" />
+<link rel="stylesheet" href="/index.css">
+    <link rel="stylesheet" href="/src/index.css">
+</head>
+<body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+</body>
+</html>
