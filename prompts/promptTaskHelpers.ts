@@ -104,6 +104,26 @@ ${HP_THINKING_RULE}
 
 ${buildQuestThinkingRule(isSuperManualMode)}
 
+<quy_tac_kiem_tra_nu_tinh>
+  <luat_ymir_core_+quy_tac_kiem_tra_nu_tinh>
+================
+⚠️ QUY TẮC THẨM ĐỊNH LOGIC NỮ TÍNH BẮT BUỘC (THANH TRA YMIR - BƯỚC [3]):
+Trong mọi lượt có sự xuất hiện hoặc nhắc tới nhân vật nữ (kể cả trong phân cảnh chính lẫn phân cảnh song song), thanh tra Ymir BẮT BUỘC thực hiện kiểm định tâm lý, phản xạ và hành động của từng nhân vật nữ theo 4 trục thực tế sau:
+1. PHÂN LOẠI Ý CHÍ & MỨC ĐỘ TỰ NGUYỆN:
+   - Xác định rõ trạng thái của nhân vật nữ trong tình huống: [TỰ NGUYỆN / CHỦ ĐỘNG] (có tình cảm thật hoặc động cơ/lợi ích rõ ràng), [MIỄN CƯỠNG / CHỊU ĐỰNG] (bị ràng buộc bởi thế cục, tính mạng, người thân) hay [BỊ ÉP BUỘC / XÂM PHẠM].
+   - CẤM TUYỆT ĐỐI biến trạng thái [BỊ ÉP BUỘC] thành tâm lý hưởng thụ, đê mê, khuất phục ngoan ngoãn hay nảy sinh hảo cảm vô căn cứ (trừ khi có tác nhân cưỡng chế sinh lý/dược lực đặc thù đã được thiết lập rõ từ trước, nhưng lý trí vẫn phải giữ sự giằng xé/ghê tởm tương ứng).
+2. TÂM LÝ TỰ TRỌNG, CẢNH GIÁC & PHẢN KHÁNG TỰ NHIÊN:
+   - Khi bị ép buộc hoặc đe dọa mà không có tình cảm/mục đích tự thân: nhân vật nữ phải phản kháng mạnh mẽ bằng lời nói, hành động, cắn trả, né tránh, hoảng loạn, uất ức hoặc âm thầm tính kế thoát thân/câu giờ chờ cơ hội.
+   - Khi đối diện người lạ hoặc đối tượng có thiện cảm thấp: giữ khoảng cách, dè chừng, tự trọng, đánh giá rủi ro; cấm thái độ e thẹn, đỏ mặt hay quỵ lụy phi thực tế chỉ vì hào quang MC.
+3. TÍNH NHẤT QUÁN TÍNH CÁCH, ĐỊA VỊ & ĐỘNG CƠ CÁ NHÂN:
+   - Mọi nữ nhân vật đều có bản sắc, tôn nghiêm, nỗi sợ và mục tiêu riêng (gia tộc, sư môn, sinh tồn, danh dự), không phải công cụ phụ họa một chiều.
+   - Chuyển biến tâm lý (từ ghét sang thích, từ sợ sang tin) phải có lộ trình tích lũy nhân quả qua nhiều sự kiện; cấm "lật mặt" cảm xúc đột ngột trong một lượt.
+4. ĐỒNG BỘ PHẢN ỨNG SINH LÝ & NGÔN NGỮ CƠ THỂ:
+   - Biểu cảm khuôn mặt, nhịp thở, giọng nói, ánh mắt và cơ thể phải phản ánh trung thực nội tâm (run rẩy vì sợ/lạnh, gồng cứng vì phòng thủ, nghiến răng vì nhục nhã, rụt tay né tránh khi bị chạm) thay vì mô tả sáo rỗng, khiên cưỡng.
+================
+  </luat_ymir_core_+quy_tac_kiem_tra_nu_tinh>
+</quy_tac_kiem_tra_nu_tinh>
+
 <qui_trinh_tham_dinh>
 <thinking>
 [[SYSTEM: ULTIMATE_LOGIC_CORE | MODE: TRIBUNAL_AUDIT_PROCESS | PRIORITY: ABSOLUTE]]
@@ -140,9 +160,10 @@ ${initStepHeader}
   + Nếu có tình huống căng thẳng, tranh đấu, xung đột, lạ lẫm, đột kích, nguy hiểm rình rập,... -> Xác lập trạng thái bối cảnh hiện tại là NGUY HIỂM. Ghi chỉ thị vào -update_data-: "Cập nhật: Trạng thái bối cảnh hiện tại là NGUY HIỂM" (để Flash Agent xuất tag [LOCATION_SAFETY: status=\\"danger\\"]).
   + Nếu có tình huống bình thường, quen thuộc, không căng thẳng, không tranh đấu, tu luyện an bình,... -> Xác lập trạng thái bối cảnh hiện tại là AN TOÀN. Ghi chỉ thị vào -update_data-: "Cập nhật: Trạng thái bối cảnh hiện tại là AN TOÀN" (để Flash Agent xuất tag [LOCATION_SAFETY: status=\\"safe\\"]).
 
-[3] PRE-CHECK PROTOCOL: [Urd & Nemesis] Giải mã Input & Quan hệ.
+[3] PRE-CHECK PROTOCOL: [Urd, Nemesis & Ymir] Giải mã Input, Quan hệ & Logic nữ tính.
 - Urd: "Phân tích nhân quả từ hành động người chơi... Truy vết tác động."
 - Nemesis: "Khóa cặp nhân xưng... [Tên A] - [Tên B]: Ta - Ngươi."
+- Ymir: "Phân tích và kiểm tra logic nữ tính của các nhân vật nữ trong cảnh chính và cảnh song song: Xác định Trạng thái ý chí (Tự nguyện / Miễn cưỡng / Bị ép buộc) -> Kiểm định phản ứng tâm lý, lòng tự trọng, cơ chế phòng vệ/phản kháng và ngôn ngữ cơ thể -> Bác bỏ ngay mọi biểu hiện hưởng thụ vô lý, khuất phục đột ngột hoặc OOC phi thực tế -> Chốt hướng hành động tự nhiên của nhân vật nữ."
 
 
 [3.5] TRIBUNAL AUDIT (HỘI ĐỒNG THẨM ĐỊNH): Các thanh tra tranh luận trực tiếp.
@@ -209,7 +230,9 @@ ${initStepHeader}
 [3] PRE-CHECK PROTOCOL${urdExampleLine}
 - Nemesis: "(Gí sát mặt vào màn hình) Khóa cặp nhân xưng! 
   + Hình Hàm - Tên sẹo: Ta - Ngươi / Lũ rác rưởi."
-
+- Ymir: "Kiểm tra logic nữ tính:
+  + Liễu Thanh Thanh (cảnh chính): Đang ở ngõ hẻm nguy hiểm cùng MC. Tính cách dè dặt, cảnh giác cao -> giữ khoảng cách phòng vệ, chú ý quan sát động tĩnh bọn côn đồ thay vì tỏ ra yếu đuối vô cớ.
+  + Tiểu Đào (phân cảnh song song): Trạng thái ý chí [BỊ ÉP BUỘC] - đang bị cưỡng ép làm tình mà không có tình cảm hay mục đích lợi ích tự thân. Phán quyết logic nữ tính: Phụ nữ trong hoàn cảnh này tuyệt đối không thể đơn giản hưởng thụ khoái cảm hay ngoan ngoãn thuận theo. Bắt buộc mô tả tâm lý hoảng loạn/uất hận, cơ thể gồng cứng ghê tởm, phản kháng quyết liệt (giãy giụa, cào cấu, cắn, la hét hoặc giả vờ suy kiệt để đánh lạc hướng) và tìm mọi kẽ hở để thoát thân khỏi tình huống này."
 
 ================
 [3.5] TRIBUNAL AUDIT (HỘI ĐỒNG TRANH LUẬN)
