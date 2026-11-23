@@ -331,11 +331,14 @@ export async function executeWithFallback(
 
             // Xây dựng contents sử dụng PrefillPayloadBuilder
             const isProxy = settings.apiKeySource === 'proxy';
-            const shouldUsePrefill = isProxy && enablePrefill && responseMimeType !== 'application/json';
+            const shouldUsePrefill = isProxy && enablePrefill && PrefillPayloadBuilder.isPrefillEligible(modelName, responseMimeType);
             const finalPrefillText = isProxy ? '<tuong_than>\n' : prefillModelText;
             const contents = PrefillPayloadBuilder.buildContents({
                 prompt,
                 enablePrefill: shouldUsePrefill,
+                enableUserAnchor: !!settings.useAiOath && enablePrefill,
+                modelName,
+                responseMimeType,
                 prefillModelText: finalPrefillText,
                 inlineParts
             });
@@ -412,7 +415,7 @@ export async function executeWithFallback(
                 keyRotator.onSuccess(currentApiKey);
                 
                 let finalText = response.text;
-                if (enablePrefill && finalPrefillText && !finalText.startsWith(finalPrefillText)) {
+                if (shouldUsePrefill && finalPrefillText && !finalText.startsWith(finalPrefillText)) {
                     finalText = finalPrefillText + finalText;
                 }
                 

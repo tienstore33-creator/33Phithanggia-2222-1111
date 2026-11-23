@@ -6,6 +6,7 @@ import { VIETNAMESE, TURNS_PER_PAGE, AUTO_SAVE_INTERVAL_TURNS, MAX_AUTO_SAVE_SLO
 import { prepareMessagesForSummary } from '../utils/summarizationHelper';
 import { generateCityEconomy, generateGeneralSubLocations, findLocationWithAI, getApiSettings, getCurrentlyUsedApiKey, parseAiResponseText } from '../services/geminiService';
 import { streamNextTurn, isNarrationTextIncomplete, streamNarrationContinuation } from '../services/storyStreamService';
+import { RewriteNarrationContext, executeRewriteNarrationFromScratch } from '../services/vietlailoike';
 import { getRecentNarrations } from '../utils/narrationContext';
 import { generateEmbeddings } from '../services/embeddingService';
 import { pruneHistoricalData } from '../utils/pruningUtils';
@@ -175,9 +176,10 @@ export const useMainGameLoop = ({
     }, [uiState.lastFlashRetryData, setKnowledgeBase, setIsLoadingApi, showNotification, setUiState]);
 
     const [isRecoveringNarration, setIsRecoveringNarration] = useState<boolean>(false);
+    const [narrationRecoveryAction, setNarrationRecoveryAction] = useState<'continue' | 'rewrite' | null>(null);
     const selectedNarrationModelRef = useRef<string>('');
     const pendingNarrationRecoveryRef = useRef<{
-        resolve: (value: 'continue' | 'ignore') => void;
+        resolve: (value: 'continue' | 'rewrite' | 'ignore') => void;
         reject: () => void;
     } | null>(null);
 
@@ -191,6 +193,12 @@ export const useMainGameLoop = ({
     const handleContinueIncompleteNarration = useCallback(() => {
         if (pendingNarrationRecoveryRef.current) {
             pendingNarrationRecoveryRef.current.resolve('continue');
+        }
+    }, []);
+
+    const handleRewriteIncompleteNarration = useCallback(() => {
+        if (pendingNarrationRecoveryRef.current) {
+            pendingNarrationRecoveryRef.current.resolve('rewrite');
         }
     }, []);
 
@@ -229,17 +237,7 @@ export const useMainGameLoop = ({
         initialResult: { response: any; rawText: string },
         messageId: string,
         turnNumber: number,
-        turnContextParams?: {
-            knowledgeBase?: KnowledgeBase;
-            playerAction?: string;
-            inputType?: PlayerActionInputType;
-            responseLength?: ResponseLength;
-            currentPageMessagesLog?: string;
-            previousPageSummaries?: string[];
-            lastNarrationFromPreviousPage?: string;
-            retrievedContext?: string;
-            dynamicContextLayers?: { priority: number; content: string }[];
-        }
+        turnContextParams?: Omit<RewriteNarrationContext, 'turnNumber'>
     ): Promise<{ response: any; rawText: string }> => {
         let currentRawText = initialResult.rawText || '';
         let currentResponse = initialResult.response;
@@ -268,8 +266,8 @@ export const useMainGameLoop = ({
                 }
             }));
 
-            // Chờ người chơi bấm "Viết tiếp" hoặc "Bỏ qua"
-            const userChoice = await new Promise<'continue' | 'ignore'>((resolve) => {
+            // Chờ người chơi bấm "Viết tiếp", "Viết lại từ đầu" hoặc "Bỏ qua"
+            const userChoice = await new Promise<'continue' | 'rewrite' | 'ignore'>((resolve) => {
                 pendingNarrationRecoveryRef.current = {
                     resolve,
                     reject: () => resolve('ignore')
@@ -283,9 +281,121 @@ export const useMainGameLoop = ({
                 break;
             }
 
-            // Người chơi chọn tiếp tục: bắt đầu gọi API bù đắp
-            setIsRecoveringNarration(true);
             const modelToUse = selectedNarrationModelRef.current || apiSettings.model;
+
+            if (userChoice === 'rewrite') {
+                setNarrationRecoveryAction('rewrite');
+                setIsRecoveringNarration(true);
+                showNotification(`Đang xóa nội dung viết dở và viết lại từ đầu bằng model ${modelToUse}...`, 'info');
+
+                // Xóa nội dung viết dở khỏi UI và thu gọn modal để người chơi thấy luồng viết lại trực tiếp
+                currentRawText = '';
+                currentResponse = { narration: '', choices: [] };
+                setGameMessages(prev => prev.filter(m =>
+                    !(m.id === messageId || (m.type === 'system' && m.turnNumber === turnNumber && m.id.startsWith('reunion-sys-')))
+                ));
+                setUiState(prev => ({
+                    ...prev,
+                    incompleteNarrationData: prev.incompleteNarrationData ? {
+                        ...prev.incompleteNarrationData,
+                        rawText: '',
+                        isMinimized: true
+                    } : null
+                }));
+
+                setIsStreaming(true);
+                setStreamingText("");
+                setIsLoadingApi(true);
+
+                try {
+                    const rewriteRes = await executeRewriteNarrationFromScratch({
+                        modelToUse,
+                        context: {
+                            ...(turnContextParams || {}),
+                            turnNumber
+                        },
+                        callbacks: {
+                            onChunk: (chunk) => {
+                                if (chunk) {
+                                    setStreamingText(prev => prev + chunk);
+                                }
+                            },
+                            onMetadata: (meta) => {
+                                console.log(`[Story Rewrite] Lời kể viết lại hoàn tất trong ${meta.duration} bằng ${meta.model}`);
+                            },
+                            onError: (err) => {
+                                console.error('[Story Rewrite] Lỗi phát sinh:', err);
+                            }
+                        },
+                        abortControllerRef,
+                        onResetStream: () => setStreamingText("")
+                    });
+
+                    setIsStreaming(false);
+                    setStreamingText("");
+                    setIsSwapping(false);
+                    setIsLoadingApi(false);
+                    abortControllerRef.current = null;
+
+                    currentRawText = rewriteRes.rawText || '';
+                    currentResponse = rewriteRes.response;
+                    attempt = 0;
+
+                    const rewrittenRawNarration = currentResponse?.narration || "";
+                    const rewrittenCleanNarration = cleanTextFromXmlUpdates(rewrittenRawNarration) || extractMainStoryContent(rewrittenRawNarration);
+                    const rewrittenMessage: GameMessage = {
+                        id: messageId,
+                        type: 'narration',
+                        content: rewrittenCleanNarration,
+                        timestamp: Date.now(),
+                        choices: currentResponse?.choices || [],
+                        turnNumber
+                    };
+
+                    setGameMessages(prev => {
+                        const filtered = prev.filter(m => m.id !== messageId);
+                        const nextMsgs = [...filtered, rewrittenMessage];
+                        if (currentResponse?.reunionOccurred) {
+                            nextMsgs.push({
+                                id: `reunion-sys-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+                                type: 'system',
+                                content: `[Hệ thống] Một sự kiện tái ngộ NPC đã diễn ra! (Mục tiêu: ${currentResponse.reunionNpcNames?.join(", ")})`,
+                                timestamp: Date.now() + 1,
+                                turnNumber
+                            });
+                        }
+                        return nextMsgs;
+                    });
+
+                    if (!isNarrationTextIncomplete(currentRawText)) {
+                        showNotification("Đã viết lại lời kể mới hoàn chỉnh!", 'success');
+                        setUiState(prev => ({ ...prev, isNarrationIncompleteModalOpen: false, incompleteNarrationData: null }));
+                        break;
+                    } else {
+                        showNotification("Lời kể viết lại vẫn thiếu thẻ đóng </content>. Bạn có thể viết tiếp hoặc thử lại với model khác.", 'warning');
+                        continue;
+                    }
+                } catch (err: any) {
+                    setIsStreaming(false);
+                    setStreamingText("");
+                    setIsSwapping(false);
+                    setIsLoadingApi(false);
+                    abortControllerRef.current = null;
+                    console.error("[Narration Recovery] Lỗi khi viết lại lời kể từ đầu:", err);
+                    showNotification(`Lỗi viết lại từ đầu: ${err?.message || err}`, 'error');
+                    currentRawText = '';
+                    currentResponse = { narration: '', choices: [] };
+                    attempt = 0;
+                    continue;
+                } finally {
+                    setIsRecoveringNarration(false);
+                    setNarrationRecoveryAction(null);
+                }
+            }
+
+            // Người chơi chọn tiếp tục: bắt đầu gọi API bù đắp
+            setNarrationRecoveryAction('continue');
+            setIsRecoveringNarration(true);
             showNotification(`Đang gọi API bù đắp lời kể (Model: ${modelToUse}, Lần ${nextAttemptNum}/${maxAttempts})...`, 'info');
 
             try {
@@ -340,6 +450,7 @@ export const useMainGameLoop = ({
                 break;
             } finally {
                 setIsRecoveringNarration(false);
+                setNarrationRecoveryAction(null);
             }
         }
 
@@ -351,7 +462,7 @@ export const useMainGameLoop = ({
             response: currentResponse,
             rawText: currentRawText
         };
-    }, [setGameMessages, setUiState, showNotification]);
+    }, [setGameMessages, setUiState, showNotification, setIsStreaming, setStreamingText, setIsSwapping, setIsLoadingApi, abortControllerRef]);
 
     const checkAndTriggerNormalizePower = useCallback(async (kbToCheck: KnowledgeBase) => {
         if (kbToCheck.worldConfig?.isCultivationEnabled === false) {
@@ -1095,6 +1206,7 @@ Yêu cầu miêu tả truyện bắt buộc:
 
             // --- DEVIATE FLOW FOR MAT PHAP (MANUAL STEP CO-ORDINATOR) ---
             const isMatPhap = apiSettings.matPhapManual === true;
+            const arcStateBeforeTurn = knowledgeBaseAtActionStart.arcState ? structuredClone(knowledgeBaseAtActionStart.arcState) : undefined;
 
             if (isMatPhap) {
                 let finalOnChunk = onChunk;
@@ -1162,6 +1274,7 @@ Yêu cầu miêu tả truyện bắt buộc:
 
                 const turnContextForContinuation = {
                     knowledgeBase: knowledgeBaseAtActionStart,
+                    arcStateSnapshot: arcStateBeforeTurn,
                     playerAction: finalActionForAI,
                     inputType,
                     responseLength,
@@ -1169,7 +1282,9 @@ Yêu cầu miêu tả truyện bắt buộc:
                     previousPageSummaries: filteredPreviousPageSummaries,
                     lastNarrationFromPreviousPage: filteredLastNarrationFromPreviousPage,
                     retrievedContext,
-                    dynamicContextLayers: contextLayers
+                    dynamicContextLayers: contextLayers,
+                    customPromptOverride,
+                    logSentPrompt: logSentPromptCallback
                 };
 
                 // Kiểm tra và xử lý bù đắp nếu lời kể bị đứt đoạn trước khi tạm dừng ở bước trích xuất
@@ -1287,6 +1402,7 @@ Yêu cầu miêu tả truyện bắt buộc:
                 onCheckIncomplete: async (res) => {
                     const turnContextForContinuation = {
                         knowledgeBase: knowledgeBaseAtActionStart,
+                        arcStateSnapshot: arcStateBeforeTurn,
                         playerAction: finalActionForAI,
                         inputType,
                         responseLength,
@@ -1294,7 +1410,9 @@ Yêu cầu miêu tả truyện bắt buộc:
                         previousPageSummaries: filteredPreviousPageSummaries,
                         lastNarrationFromPreviousPage: filteredLastNarrationFromPreviousPage,
                         retrievedContext,
-                        dynamicContextLayers: contextLayers
+                        dynamicContextLayers: contextLayers,
+                        customPromptOverride,
+                        logSentPrompt: logSentPromptCallback
                     };
                     return await checkAndRecoverIncompleteNarration(
                         res,
@@ -2820,7 +2938,9 @@ Yêu cầu miêu tả truyện bắt buộc:
         handleRetryFlashSummary,
         handleIgnoreFlashSummary,
         isRecoveringNarration,
+        narrationRecoveryAction,
         handleContinueIncompleteNarration,
+        handleRewriteIncompleteNarration,
         handleIgnoreIncompleteNarration,
         handleHideIncompleteNarration,
         handleRestoreIncompleteNarration,

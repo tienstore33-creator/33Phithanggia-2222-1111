@@ -300,7 +300,9 @@ export interface GameContextType {
   handleRetryFlashSummary: () => Promise<void>;
   handleIgnoreFlashSummary: () => void;
   isRecoveringNarration: boolean;
+  narrationRecoveryAction: 'continue' | 'rewrite' | null;
   handleContinueIncompleteNarration: () => void;
+  handleRewriteIncompleteNarration: () => void;
   handleIgnoreIncompleteNarration: () => void;
   handleHideIncompleteNarration: () => void;
   handleRestoreIncompleteNarration: () => void;
@@ -2785,7 +2787,9 @@ Chi tiết diễn biến: AI mô tả MC bán thành công ${quantity}x "${itemT
     handleIgnoreUnrecognizedTags: gameActions.handleIgnoreUnrecognizedTags,
     handleRetryUnrecognizedTags: gameActions.handleRetryUnrecognizedTags,
     isRecoveringNarration: gameActions.isRecoveringNarration,
+    narrationRecoveryAction: gameActions.narrationRecoveryAction,
     handleContinueIncompleteNarration: gameActions.handleContinueIncompleteNarration,
+    handleRewriteIncompleteNarration: gameActions.handleRewriteIncompleteNarration,
     handleIgnoreIncompleteNarration: gameActions.handleIgnoreIncompleteNarration,
     handleHideIncompleteNarration: gameActions.handleHideIncompleteNarration,
     handleRestoreIncompleteNarration: gameActions.handleRestoreIncompleteNarration,

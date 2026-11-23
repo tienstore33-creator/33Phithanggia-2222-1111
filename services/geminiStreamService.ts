@@ -116,6 +116,9 @@ export async function generateGameResponseStream(
       const contents = PrefillPayloadBuilder.buildContents({
           prompt,
           enablePrefill: shouldUsePrefill,
+          enableUserAnchor: !!settings.useAiOath && enablePrefill,
+          modelName: currentModel,
+          responseMimeType,
           prefillModelText: finalPrefillText
       });
 

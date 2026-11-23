@@ -6,6 +6,7 @@ import https from "https";
 import { URL } from "url";
 import { handleGeminiProxyCore } from './services/backend/geminiCore.js';
 import { generateCloudinarySignatureCore } from './services/backend/cloudinaryCore.js';
+import { isFastLaneModel, handleFastLaneStreamProxy, handleFastLaneUnaryProxy } from './services/backend/toiuuduongtruyen.js';
 
 async function startServer() {
   const app = express();
@@ -22,7 +23,12 @@ async function startServer() {
     next();
   });
 
-  app.use(express.json({ limit: '50mb' })); // Increased limit for larger payloads
+  app.use(express.json({
+    limit: '50mb',
+    verify: (req: any, _res, buf) => {
+      req.rawBody = buf;
+    }
+  })); // Increased limit for larger payloads & preserve rawBody for Fast-Lane proxy
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
   // API routes
@@ -258,6 +264,33 @@ async function startServer() {
       try { parsedBody = JSON.parse(parsedBody); } catch (_) {}
     }
     parsedBody = parsedBody || {};
+    const rawBody: Buffer | undefined = (req as any).rawBody;
+
+    // Ưu tiên Fast-Lane Pass-Through cho đúng 5 model chỉ định
+    if (isFastLaneModel(modelName)) {
+      if (apiPath.includes(':streamGenerateContent')) {
+        return await handleFastLaneStreamProxy({
+          req,
+          res,
+          apiPath,
+          apiKey,
+          modelName,
+          rawBody,
+          parsedBody,
+        });
+      }
+      if (apiPath.includes(':generateContent')) {
+        return await handleFastLaneUnaryProxy({
+          req,
+          res,
+          apiPath,
+          apiKey,
+          modelName,
+          rawBody,
+          parsedBody,
+        });
+      }
+    }
 
     const nativeAi = new GoogleGenAI({ apiKey });
     const extractHttpStatus = (err: any): number => {
@@ -489,9 +522,12 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  const httpServer = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
+  httpServer.keepAliveTimeout = 65000;
+  httpServer.headersTimeout = 66000;
+  httpServer.requestTimeout = 300000;
 }
 
 startServer();

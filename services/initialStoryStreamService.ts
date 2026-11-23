@@ -86,6 +86,8 @@ export async function generateInitialStoryStream(
     const contents = PrefillPayloadBuilder.buildContents({
       prompt: optimizedPrompt,
       enablePrefill: !!settings.useAiOath && PrefillPayloadBuilder.isPrefillEligible(currentModel),
+      enableUserAnchor: !!settings.useAiOath,
+      modelName: currentModel,
       prefillModelText: PrefillPayloadBuilder.DEFAULT_PREFILL_TEXT
     });
 
@@ -215,6 +217,8 @@ export async function generateInitialStoryStream(
         const contents = PrefillPayloadBuilder.buildContents({
           prompt: optimizedPrompt,
           enablePrefill: !!settings.useAiOath && PrefillPayloadBuilder.isPrefillEligible(selectedModel),
+          enableUserAnchor: !!settings.useAiOath,
+          modelName: selectedModel,
           prefillModelText: PrefillPayloadBuilder.DEFAULT_PREFILL_TEXT
         });
 

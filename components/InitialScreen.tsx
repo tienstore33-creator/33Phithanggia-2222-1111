@@ -108,6 +108,16 @@ function markdownToHtml(markdownText: string): string {
 }
 
 const LOCAL_UPDATE_NOTES = `
+### 🌟 CẬP NHẬT MỚI: TÙY CHỌN "VIẾT LẠI TỪ ĐẦU" KHI LỜI KỂ ĐỨT ĐOẠN (Phiên bản 12.0.2)
+* **Chủ động hủy bản nháp đứt đoạn & tạo mới hoàn toàn**:
+  - Bổ sung nút **Viết lại từ đầu** ngay trong bảng thông báo *Lời Kể Bị Đứt Đoạn*, cho phép chọn model AI khác từ danh sách, xóa sạch đoạn lời kể viết dở trên giao diện và phát trực tiếp (stream) lại toàn bộ lượt kể từ đầu.
+  - Bảo toàn nguyên vẹn bộ đếm vòng lặp cốt truyện (\`arcState\`) và tự động reset số lần bù đắp khi khởi tạo lại bản viết mới.
+
+### 🌟 CẬP NHẬT MỚI: TỐI ƯU ĐƯỜNG TRUYỀN FAST-LANE PROXY CHO 5 MODEL CHỈ ĐỊNH (Phiên bản 12.0.1)
+* **Tăng tốc độ phản hồi stream & tối ưu kết nối server**:
+  - Tách luồng **Fast-Lane Pass-Through** chuyên biệt cho \`Gemini 4 Hydrogen\` và \`Gemini Flash 3.5 / 3.6 / 3.7 / 3.8\`, loại bỏ bước trung gian parse/stringify 2 lần và giữ nguyên payload gốc khi đi qua proxy nội bộ.
+  - Bổ sung đẩy gói SSE tức thì (\`flushHeaders\` + \`setNoDelay\`), đồng bộ tín hiệu hủy kết nối (\`AbortController\`) trực tiếp xuống Google khi người dùng dừng hoặc hết thời gian chờ, và nới rộng socket timeout phục vụ suy luận sâu.
+
 ### 🌟 CẬP NHẬT MỚI: CƠ CHẾ LỰA CHỌN THINKING LEVEL THEO TỪNG MODEL (Phiên bản 12.0.0)
 * **Kiểm soát mức suy luận chuyên sâu cho từng tác vụ & model**:
   - Bổ sung bộ chọn **Thinking Level** trực quan ngay bên dưới Model Cốt Truyện Chính, Kinh Tế & Chiến Đấu (tự động nhận diện các mức hỗ trợ như \`MINIMAL\`, \`LOW\`, \`MEDIUM\`, \`HIGH\`, \`XHIGH\`).

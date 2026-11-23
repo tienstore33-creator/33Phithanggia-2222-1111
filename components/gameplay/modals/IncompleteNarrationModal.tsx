@@ -10,10 +10,13 @@ interface IncompleteNarrationModalProps {
     attempt: number;
     maxAttempts: number;
     isLoading?: boolean;
+    recoveryAction?: 'continue' | 'rewrite' | null;
+    hasPartialContent?: boolean;
     availableModels?: ModelOption[];
     selectedModel?: string;
     onSelectModel?: (model: string) => void;
     onContinue: () => void;
+    onRewrite?: () => void;
     onIgnore: () => void;
     onHide?: () => void;
     isMinimized?: boolean;
@@ -25,10 +28,13 @@ export const IncompleteNarrationModal: React.FC<IncompleteNarrationModalProps> =
     attempt,
     maxAttempts,
     isLoading = false,
+    recoveryAction = null,
+    hasPartialContent = true,
     availableModels = [],
     selectedModel,
     onSelectModel,
     onContinue,
+    onRewrite,
     onIgnore,
     onHide,
     isMinimized = false,
@@ -45,7 +51,11 @@ export const IncompleteNarrationModal: React.FC<IncompleteNarrationModalProps> =
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
                     </span>
-                    <span>Lời kể bị đứt đoạn (Lần {attempt}/{maxAttempts})</span>
+                    <span>
+                        {isLoading
+                            ? (recoveryAction === 'rewrite' ? 'Đang viết lại từ đầu...' : 'Đang viết tiếp lời kể...')
+                            : `Lời kể bị đứt đoạn (Lần ${attempt}/${maxAttempts})`}
+                    </span>
                 </div>
                 <button
                     type="button"
@@ -103,7 +113,7 @@ export const IncompleteNarrationModal: React.FC<IncompleteNarrationModalProps> =
                         Phản hồi thô của AI kể chuyện kết thúc khi chưa hoàn thành lời kể (thiếu thẻ đóng <code className="text-amber-300 font-mono text-xs bg-slate-800 px-1.5 py-0.5 rounded">&lt;/content&gt;</code>). Điều này thường xảy ra khi lời kể quá dài hoặc đạt giới hạn token.
                     </p>
                     <p className="text-xs text-slate-400">
-                        Bạn có thể chọn Model AI và gọi thêm 1 lượt API bù đắp để AI viết tiếp trọn vẹn mạch truyện, hoặc bấm tạm đóng để xem trước nội dung đang viết.
+                        Bạn có thể chọn Model AI để viết tiếp phần còn dang dở, chọn <strong className="text-rose-300">Viết lại từ đầu</strong> để xóa nội dung viết dở và tạo mới hoàn toàn, hoặc bấm tạm đóng để xem trước nội dung đang viết.
                     </p>
                 </div>
 
@@ -120,7 +130,7 @@ export const IncompleteNarrationModal: React.FC<IncompleteNarrationModalProps> =
                                 <path d="M22 22H2"/>
                                 <path d="m16 6-4 4-4-4"/>
                             </svg>
-                            <span>Model AI tạo tiếp:</span>
+                            <span>Chọn Model AI (Tạo tiếp / Viết lại):</span>
                         </label>
                         <select
                             value={selectedModel || ''}
@@ -138,7 +148,7 @@ export const IncompleteNarrationModal: React.FC<IncompleteNarrationModalProps> =
                 )}
 
                 {/* Actions */}
-                <div className="flex flex-col sm:flex-row gap-2.5 justify-end items-center">
+                <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2.5 justify-end items-stretch sm:items-center">
                     {onHide && (
                         <button
                             type="button"
@@ -157,13 +167,39 @@ export const IncompleteNarrationModal: React.FC<IncompleteNarrationModalProps> =
                     >
                         Bỏ qua & Dùng nội dung này
                     </button>
+                    {onRewrite && (
+                        <button
+                            type="button"
+                            onClick={onRewrite}
+                            disabled={isLoading}
+                            className="w-full sm:w-auto px-4 py-2 rounded-xl bg-rose-950/70 hover:bg-rose-900/90 border border-rose-500/40 text-rose-200 font-semibold text-xs transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                        >
+                            {isLoading && recoveryAction === 'rewrite' ? (
+                                <>
+                                    <svg className="animate-spin h-3.5 w-3.5 text-rose-200" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span>Đang viết lại...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                                        <path d="M3 3v5h5" />
+                                    </svg>
+                                    <span>Viết lại từ đầu</span>
+                                </>
+                            )}
+                        </button>
+                    )}
                     <button
                         type="button"
                         onClick={onContinue}
-                        disabled={isLoading}
+                        disabled={isLoading || !hasPartialContent}
                         className="w-full sm:w-auto px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-xs transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 disabled:opacity-50"
                     >
-                        {isLoading ? (
+                        {isLoading && recoveryAction !== 'rewrite' ? (
                             <>
                                 <svg className="animate-spin h-3.5 w-3.5 text-slate-950" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>

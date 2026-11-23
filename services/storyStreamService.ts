@@ -90,6 +90,7 @@ export async function streamNextTurn(
   const keyRotator = createFallbackKeyRotator(settings, apiKey);
   const isProxy = settings.apiKeySource === 'proxy';
   const shouldUsePrefill = !!settings.useAiOath;
+  const allowThinkingAnchor = shouldUsePrefill && !payload.isOocAction && responseLength !== 'dialogue';
   const prefillModelText = PrefillPayloadBuilder.DEFAULT_PREFILL_TEXT;
 
   for (let i = 0; i < modelChain.length; i++) {
@@ -101,19 +102,15 @@ export async function streamNextTurn(
     const { apiKey: apiKeyToUse, apiKeyLabel: apiKeyLabelToUse } = keyInfo;
     
     const ai = getAiClient(settings, apiKeyToUse, 'main');
-    const isPrefillEligible = shouldUsePrefill && PrefillPayloadBuilder.isPrefillEligible(currentModel);
-    let contents: any[];
-    if (isPrefillEligible) {
-      contents = PrefillPayloadBuilder.buildContents({
-        prompt: finalPromptToSend,
-        enablePrefill: true,
-        prefillModelText: prefillModelText
-      });
-      fullText = prefillModelText;
-    } else {
-      contents = [{ role: 'user', parts: [{ text: finalPromptToSend }] }];
-      fullText = '';
-    }
+    const isPrefillEligible = allowThinkingAnchor && PrefillPayloadBuilder.isPrefillEligible(currentModel);
+    const contents = PrefillPayloadBuilder.buildContents({
+      prompt: finalPromptToSend,
+      enablePrefill: isPrefillEligible,
+      enableUserAnchor: allowThinkingAnchor,
+      modelName: currentModel,
+      prefillModelText: prefillModelText
+    });
+    fullText = isPrefillEligible ? prefillModelText : '';
 
     const requestPayloadStr = JSON.stringify(contents, null, 2);
     const currentTaskId = apiRunningService.start(currentModel, apiKeyLabelToUse, purpose, requestPayloadStr);
@@ -299,7 +296,7 @@ export async function streamNextTurn(
           try {
               if (onResetStream) onResetStream();
               
-              const isRetryPrefillEligible = shouldUsePrefill && PrefillPayloadBuilder.isPrefillEligible(selectedModel);
+              const isRetryPrefillEligible = allowThinkingAnchor && PrefillPayloadBuilder.isPrefillEligible(selectedModel);
               const retryConfig = applyThinkingConfig(
                 selectedModel,
                 payload.systemInstruction ? { systemInstruction: payload.systemInstruction } : {},
@@ -307,7 +304,13 @@ export async function streamNextTurn(
               );
               const result = await manualAi.models.generateContentStream({
                   model: selectedModel,
-                  contents: isRetryPrefillEligible ? PrefillPayloadBuilder.buildContents({ prompt: finalPromptToSend, enablePrefill: true, prefillModelText }) : [{ role: 'user', parts: [{ text: finalPromptToSend }] }],
+                  contents: PrefillPayloadBuilder.buildContents({
+                    prompt: finalPromptToSend,
+                    enablePrefill: isRetryPrefillEligible,
+                    enableUserAnchor: allowThinkingAnchor,
+                    modelName: selectedModel,
+                    prefillModelText
+                  }),
                   config: Object.keys(retryConfig).length > 0 ? retryConfig : undefined,
               });
 

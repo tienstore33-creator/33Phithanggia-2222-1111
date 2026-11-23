@@ -167,10 +167,13 @@ const AppContent: React.FC = () => {
         attempt={game.uiState.incompleteNarrationData?.attempt || 1}
         maxAttempts={game.uiState.incompleteNarrationData?.maxAttempts || 2}
         isLoading={game.isRecoveringNarration}
+        recoveryAction={game.narrationRecoveryAction}
+        hasPartialContent={!!game.uiState.incompleteNarrationData?.rawText?.trim()}
         availableModels={AVAILABLE_MODELS}
         selectedModel={game.uiState.incompleteNarrationData?.selectedModel}
         onSelectModel={game.handleSelectIncompleteNarrationModel}
         onContinue={game.handleContinueIncompleteNarration}
+        onRewrite={game.handleRewriteIncompleteNarration}
         onIgnore={game.handleIgnoreIncompleteNarration}
         onHide={game.handleHideIncompleteNarration}
         isMinimized={!!game.uiState.incompleteNarrationData?.isMinimized}

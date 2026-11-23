@@ -1,5 +1,5 @@
 export const GAME_TITLE = "Phi Thăng Giả";
-export const APP_VERSION = "12.0.0";
+export const APP_VERSION = "12.0.2";
 export const TURNS_PER_PAGE = 10;
 export const NARRATION_CONTEXT_HISTORY_LENGTH = 5;
 export const MAX_TURN_HISTORY_LENGTH = 9999;
