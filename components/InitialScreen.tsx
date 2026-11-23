@@ -108,6 +108,11 @@ function markdownToHtml(markdownText: string): string {
 }
 
 const LOCAL_UPDATE_NOTES = `
+### 🌟 CẬP NHẬT MỚI: KHÓA CẤU TRÚC STRUCTURED OUTPUTS & FEW-SHOT MULTI-TURN CHO 5 MODEL ĐỜI MỚI (Phiên bản 12.0.3)
+* **Áp dụng đồng bộ Cách 1 + Cách 3 cho \`Gemini 4 Hydrogen\` và \`Gemini Flash 3.5 / 3.6 / 3.7 / 3.8\`**:
+  - Bật **Structured Outputs (\`responseSchema\`)** khóa cứng cấu trúc JSON theo thứ tự \`thinking -> content -> entity_tracking -> update_data -> flash_summary -> choices\` thay thế cơ chế prefill cuối lượt.
+  - Kết hợp **Few-Shot Multi-Turn chuẩn (\`user -> model -> user\`)** sử dụng trực tiếp mẫu đồng thẩm định từ \`promptTaskHelpers.ts\` và bộ chuyển đổi Stream JSON sang XML theo thời gian thực để tương thích hoàn toàn với \`ThinkingLog\`, \`StoryLog\` và hệ thống bóc tách tag.
+
 ### 🌟 CẬP NHẬT MỚI: TÙY CHỌN "VIẾT LẠI TỪ ĐẦU" KHI LỜI KỂ ĐỨT ĐOẠN (Phiên bản 12.0.2)
 * **Chủ động hủy bản nháp đứt đoạn & tạo mới hoàn toàn**:
   - Bổ sung nút **Viết lại từ đầu** ngay trong bảng thông báo *Lời Kể Bị Đứt Đoạn*, cho phép chọn model AI khác từ danh sách, xóa sạch đoạn lời kể viết dở trên giao diện và phát trực tiếp (stream) lại toàn bộ lượt kể từ đầu.
@@ -327,6 +332,10 @@ const LOCAL_UPDATE_NOTES = `
   - Công thức yêu cầu: \`Tuổi tối thiểu = (Số thứ tự đại cảnh giới tiếp theo - 1) * 20\`.
   - Cụ thể: Để đột phá lên đại cảnh giới thứ 3 cần tối thiểu 20 tuổi, đại cảnh giới thứ 4 cần tối thiểu 40 tuổi, và tiếp tục tăng dần cho các cảnh giới cao hơn.
   - Thông báo rõ ràng nguyên nhân thất bại và yêu cầu cụ thể khi nhân vật chưa đạt đủ độ tuổi chín muồi về căn cơ.
+
+### 🌟 CẬP NHẬT MỚI: KHẮC PHỤC LỖI INCOMPLETE JSON SEGMENT CHO FLASH 3.8, 3.7 VÀ GEMINI 4 HYDROGEN (Phiên bản 12.0.4)
+* **Loại trừ Structured JSON Schema Streaming cho các model flash 3.8, 3.7 và gemini 4 hydrogen**:
+  - Tự động chuyển đổi các model gemini-4-hydrogen, gemini-3.8-flash, gemini-3.7-flash sang chế độ streaming text chuẩn (kèm thẻ XML) thay vì ép buộc Structured Outputs (responseMimeType: application/json), khắc phục triệt để lỗi Incomplete JSON segment at the end từ Google GenAI SDK.
 
 ### 🌟 CẬP NHẬT MỚI: TỰ ĐỘNG THAY THẾ TỪ KHÓA NỘI DUNG THÔ GỬI AI KỂ CHUYỆN (Phiên bản 9.80.0)
 * **Chuẩn hóa hệ thống từ khóa truyền tin**:

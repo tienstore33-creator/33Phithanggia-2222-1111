@@ -16,6 +16,11 @@ import { removeTuongThanTag } from './xmlSanitizerUtils';
 import { extractGroundingDataFromResponse } from '../services/chatbotGroundingExtractor';
 import { GroundingData } from '../types/chatbot';
 import { applyThinkingConfig } from './thinkingLevelUtils';
+import {
+    isNarrativeStructuredEligible,
+    NARRATIVE_STRUCTURED_RESPONSE_SCHEMA,
+    finalizeStructuredNarrativeOutput,
+} from '../services/ai/StructuredNarrativeHelper';
 
 export const FLASH_LITE_FALLBACK_CHAIN = [
   'gemini-flash-lite-latest',
@@ -251,6 +256,7 @@ export async function executeWithFallback(
     enablePrefill: boolean = true,
     prefillModelText: string = "</tuong_than>\n<thinking>\n"
 ): Promise<{ text: string; modelUsed: string; grounding?: GroundingData }> {
+    const callStartTime = Date.now();
     const modelChain = getModelChainForTask(category, settings);
     const keyRotator = createFallbackKeyRotator(settings, apiKey);
     let lastError: any = null;
@@ -300,7 +306,20 @@ export async function executeWithFallback(
             Object.keys(config).forEach(k => delete config[k]);
             Object.assign(config, finalConfigWithThinking);
 
-            if (responseMimeType === 'application/json') {
+            const useStructuredNarrative = isNarrativeStructuredEligible({
+                modelName,
+                responseMimeType,
+                prompt,
+                systemInstruction,
+                enableNarrativeStructured: category === 'main',
+            });
+
+            if (useStructuredNarrative) {
+                delete config.tools;
+                delete config.toolConfig;
+                config.responseMimeType = "application/json";
+                config.responseSchema = NARRATIVE_STRUCTURED_RESPONSE_SCHEMA;
+            } else if (responseMimeType === 'application/json') {
                 // IMPORTANT: Gemini does not support combining Function Calling/Google Search
                 // with response_mime_type: 'application/json' in many API versions.
                 // We prioritize JSON output for extraction tasks.
@@ -331,17 +350,21 @@ export async function executeWithFallback(
 
             // Xây dựng contents sử dụng PrefillPayloadBuilder
             const isProxy = settings.apiKeySource === 'proxy';
-            const shouldUsePrefill = isProxy && enablePrefill && PrefillPayloadBuilder.isPrefillEligible(modelName, responseMimeType);
+            const shouldUsePrefill = !useStructuredNarrative && isProxy && enablePrefill && PrefillPayloadBuilder.isPrefillEligible(modelName, responseMimeType);
             const finalPrefillText = isProxy ? '<tuong_than>\n' : prefillModelText;
             const contents = PrefillPayloadBuilder.buildContents({
                 prompt,
                 enablePrefill: shouldUsePrefill,
-                enableUserAnchor: !!settings.useAiOath && enablePrefill,
+                enableUserAnchor: !useStructuredNarrative && !!settings.useAiOath && enablePrefill,
+                enableFewShotMultiTurn: useStructuredNarrative,
                 modelName,
                 responseMimeType,
                 prefillModelText: finalPrefillText,
                 inlineParts
             });
+
+            const elapsedSeconds = ((Date.now() - callStartTime) / 1000).toFixed(1);
+            console.log(`[API CALL INFO] Nguồn: ${settings.apiKeySource} | ${apiKeyLabel} : ${modelName} : ${elapsedSeconds}s : ${purpose}${useStructuredNarrative ? ' [Structured+FewShot]' : ''} : utils/modelFallback.ts`);
 
             const requestPayloadStr = JSON.stringify(contents, null, 2);
             currentTaskId = apiRunningService.start(modelName, apiKeyLabel, purpose, requestPayloadStr);
@@ -414,21 +437,25 @@ export async function executeWithFallback(
                 // REVOLVER SUCCESS ROTATION: Set global key index to the next key in line
                 keyRotator.onSuccess(currentApiKey);
                 
-                let finalText = response.text;
-                if (shouldUsePrefill && finalPrefillText && !finalText.startsWith(finalPrefillText)) {
-                    finalText = finalPrefillText + finalText;
-                }
-                
-                // Extract native thought parts if they exist
-                const parts = response.candidates?.[0]?.content?.parts || [];
-                let thoughtText = '';
-                for (const p of parts as any[]) {
-                    if (p.thought === true && p.text) {
-                        thoughtText += p.text + '\n';
+                let finalText = useStructuredNarrative
+                    ? finalizeStructuredNarrativeOutput(response.text)
+                    : response.text;
+                if (!useStructuredNarrative) {
+                    if (shouldUsePrefill && finalPrefillText && !finalText.startsWith(finalPrefillText)) {
+                        finalText = finalPrefillText + finalText;
                     }
-                }
-                if (thoughtText.trim() !== '') {
-                    finalText = `<thinking>\n${thoughtText.trim()}\n</thinking>\n\n` + finalText;
+                    
+                    // Extract native thought parts if they exist
+                    const parts = response.candidates?.[0]?.content?.parts || [];
+                    let thoughtText = '';
+                    for (const p of parts as any[]) {
+                        if (p.thought === true && p.text) {
+                            thoughtText += p.text + '\n';
+                        }
+                    }
+                    if (thoughtText.trim() !== '') {
+                        finalText = `<thinking>\n${thoughtText.trim()}\n</thinking>\n\n` + finalText;
+                    }
                 }
                 
                 finalText = removeTuongThanTag(finalText);
@@ -524,7 +551,9 @@ export async function executeWithFallback(
                     useGoogleSearch,
                     responseMimeType,
                     inlineParts,
-                    purpose
+                    purpose,
+                    enablePrefill,
+                    prefillModelText
                 );
             } catch (retryErr: any) {
                 console.warn(`[ModelFallback Prompt Retry] Model ${selectedModel} failed:`, retryErr.message || retryErr);

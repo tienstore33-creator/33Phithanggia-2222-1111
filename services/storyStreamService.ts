@@ -12,6 +12,12 @@ import { apiKeyManager } from "../utils/apiKeyManager";
 import { fallbackEventService } from "./fallbackEventService";
 import { replaceStoryKeywords } from '../utils/storyKeywordReplacer';
 import { applyThinkingConfig } from '../utils/thinkingLevelUtils';
+import {
+  isNarrativeStructuredEligible,
+  NARRATIVE_STRUCTURED_RESPONSE_SCHEMA,
+  StructuredStreamXmlAdapter,
+  finalizeStructuredNarrativeOutput,
+} from './ai/StructuredNarrativeHelper';
 
 export interface StoryStreamCallbacks {
   onChunk: (chunk: string) => void;
@@ -91,6 +97,7 @@ export async function streamNextTurn(
   const isProxy = settings.apiKeySource === 'proxy';
   const shouldUsePrefill = !!settings.useAiOath;
   const allowThinkingAnchor = shouldUsePrefill && !payload.isOocAction && responseLength !== 'dialogue';
+  const allowNarrativeStructured = !payload.isOocAction && responseLength !== 'dialogue';
   const prefillModelText = PrefillPayloadBuilder.DEFAULT_PREFILL_TEXT;
 
   for (let i = 0; i < modelChain.length; i++) {
@@ -102,11 +109,18 @@ export async function streamNextTurn(
     const { apiKey: apiKeyToUse, apiKeyLabel: apiKeyLabelToUse } = keyInfo;
     
     const ai = getAiClient(settings, apiKeyToUse, 'main');
-    const isPrefillEligible = allowThinkingAnchor && PrefillPayloadBuilder.isPrefillEligible(currentModel);
+    const useStructuredNarrative = isNarrativeStructuredEligible({
+      modelName: currentModel,
+      prompt: finalPromptToSend,
+      systemInstruction: payload.systemInstruction,
+      enableNarrativeStructured: allowNarrativeStructured,
+    });
+    const isPrefillEligible = !useStructuredNarrative && allowThinkingAnchor && PrefillPayloadBuilder.isPrefillEligible(currentModel);
     const contents = PrefillPayloadBuilder.buildContents({
       prompt: finalPromptToSend,
       enablePrefill: isPrefillEligible,
-      enableUserAnchor: allowThinkingAnchor,
+      enableUserAnchor: !useStructuredNarrative && allowThinkingAnchor,
+      enableFewShotMultiTurn: useStructuredNarrative,
       modelName: currentModel,
       prefillModelText: prefillModelText
     });
@@ -121,7 +135,7 @@ export async function streamNextTurn(
       }
 
         const elapsedSeconds = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
-        console.log(`[API CALL INFO] Source: ${settings.apiKeySource} | ${apiKeyLabelToUse} : ${currentModel} : ${elapsedSeconds} : ${purpose} : services/storyStreamService.ts`);
+        console.log(`[API CALL INFO] Source: ${settings.apiKeySource} | ${apiKeyLabelToUse} : ${currentModel} : ${elapsedSeconds} : ${purpose}${useStructuredNarrative ? ' [Structured+FewShot]' : ''} : services/storyStreamService.ts`);
 
         if (isPrefillEligible) {
           const cleanPrefill = removeTuongThanTag(prefillModelText);
@@ -147,9 +161,16 @@ export async function streamNextTurn(
 
         const streamPromise = (async () => {
           let result: any;
+          const baseConfig: Record<string, any> = payload.systemInstruction
+            ? { systemInstruction: payload.systemInstruction }
+            : {};
+          if (useStructuredNarrative) {
+            baseConfig.responseMimeType = "application/json";
+            baseConfig.responseSchema = NARRATIVE_STRUCTURED_RESPONSE_SCHEMA;
+          }
           const requestConfig = applyThinkingConfig(
             currentModel,
-            payload.systemInstruction ? { systemInstruction: payload.systemInstruction } : {},
+            baseConfig,
             settings
           );
           const hasConfig = Object.keys(requestConfig).length > 0;
@@ -168,7 +189,10 @@ export async function streamNextTurn(
                 contents,
                 config: hasConfig ? requestConfig : undefined,
               });
-              const text = removeTuongThanTag(singleRes.text || '');
+              const rawSingleText = singleRes.text || '';
+              const text = useStructuredNarrative
+                ? finalizeStructuredNarrativeOutput(rawSingleText)
+                : removeTuongThanTag(rawSingleText);
               fullText = isPrefillEligible && !text.includes('<thinking>') ? (prefillModelText + text) : text;
               fullText = removeTuongThanTag(fullText);
               clearContentTimeout();
@@ -193,19 +217,74 @@ export async function streamNextTurn(
           }
 
           const deduplicationState = { buffer: '', hasStripped: false };
+          const structuredAdapter = useStructuredNarrative ? new StructuredStreamXmlAdapter() : null;
+          let receivedAnyStreamChunk = false;
 
-          for await (const chunk of result) {
-            let chunkText = removeTuongThanTag(chunk.text || '');
-            if (isPrefillEligible) {
-              chunkText = PrefillPayloadBuilder.processDeduplicationChunk(chunkText, deduplicationState);
+          try {
+            for await (const chunk of result) {
+              if (structuredAdapter) {
+                const rawChunkText = chunk.text || '';
+                if (rawChunkText) {
+                  receivedAnyStreamChunk = true;
+                  const xmlChunk = structuredAdapter.pushChunk(rawChunkText);
+                  if (xmlChunk) {
+                    clearContentTimeout();
+                    callbacks?.onChunk(xmlChunk);
+                  }
+                }
+              } else {
+                let chunkText = removeTuongThanTag(chunk.text || '');
+                if (isPrefillEligible) {
+                  chunkText = PrefillPayloadBuilder.processDeduplicationChunk(chunkText, deduplicationState);
+                }
+                if (chunkText) {
+                  receivedAnyStreamChunk = true;
+                  fullText += chunkText;
+                  clearContentTimeout();
+                  callbacks?.onChunk(chunkText);
+                }
+              }
             }
-            if (chunkText) {
-              fullText += chunkText;
-              clearContentTimeout();
-              callbacks?.onChunk(chunkText);
+          } catch (iterErr: any) {
+            const iterMsg = iterErr?.message || String(iterErr || '');
+            const isIncompleteSse =
+              iterMsg.includes('Incomplete JSON segment at the end') ||
+              iterMsg.includes('exception parsing stream chunk');
+            if (!isIncompleteSse) {
+              throw iterErr;
+            }
+            console.warn(`[storyStreamService] Phát hiện lỗi cắt đoạn SSE (${iterMsg}). Đang phục hồi...`);
+            if (!receivedAnyStreamChunk) {
+              const singleRes = await ai.models.generateContent({
+                model: currentModel,
+                contents,
+                config: hasConfig ? requestConfig : undefined,
+              });
+              const rawSingleText = singleRes.text || '';
+              if (structuredAdapter && rawSingleText) {
+                const xmlChunk = structuredAdapter.pushChunk(rawSingleText);
+                if (xmlChunk) {
+                  clearContentTimeout();
+                  callbacks?.onChunk(xmlChunk);
+                }
+              } else {
+                const text = removeTuongThanTag(rawSingleText);
+                fullText = isPrefillEligible && !text.includes('<thinking>') ? (prefillModelText + text) : text;
+                clearContentTimeout();
+                if (text && callbacks?.onChunk) {
+                  callbacks.onChunk(text);
+                }
+              }
             }
           }
-          
+
+          if (structuredAdapter) {
+            fullText = finalizeStructuredNarrativeOutput(
+              structuredAdapter.getRawJson(),
+              structuredAdapter.getXmlOutput()
+            );
+          }
+
           fullText = removeTuongThanTag(fullText);
           if (!fullText || fullText.trim() === "") {
             throw new Error("Phản hồi kể truyện từ AI rỗng sau khi làm sạch.");
@@ -296,10 +375,23 @@ export async function streamNextTurn(
           try {
               if (onResetStream) onResetStream();
               
-              const isRetryPrefillEligible = allowThinkingAnchor && PrefillPayloadBuilder.isPrefillEligible(selectedModel);
+              const useRetryStructured = isNarrativeStructuredEligible({
+                modelName: selectedModel,
+                prompt: finalPromptToSend,
+                systemInstruction: payload.systemInstruction,
+                enableNarrativeStructured: allowNarrativeStructured,
+              });
+              const isRetryPrefillEligible = !useRetryStructured && allowThinkingAnchor && PrefillPayloadBuilder.isPrefillEligible(selectedModel);
+              const retryBaseConfig: Record<string, any> = payload.systemInstruction
+                ? { systemInstruction: payload.systemInstruction }
+                : {};
+              if (useRetryStructured) {
+                retryBaseConfig.responseMimeType = "application/json";
+                retryBaseConfig.responseSchema = NARRATIVE_STRUCTURED_RESPONSE_SCHEMA;
+              }
               const retryConfig = applyThinkingConfig(
                 selectedModel,
-                payload.systemInstruction ? { systemInstruction: payload.systemInstruction } : {},
+                retryBaseConfig,
                 settings
               );
               const result = await manualAi.models.generateContentStream({
@@ -307,7 +399,8 @@ export async function streamNextTurn(
                   contents: PrefillPayloadBuilder.buildContents({
                     prompt: finalPromptToSend,
                     enablePrefill: isRetryPrefillEligible,
-                    enableUserAnchor: allowThinkingAnchor,
+                    enableUserAnchor: !useRetryStructured && allowThinkingAnchor,
+                    enableFewShotMultiTurn: useRetryStructured,
                     modelName: selectedModel,
                     prefillModelText
                   }),
@@ -322,17 +415,34 @@ export async function streamNextTurn(
                   }
               }
               const retryDeduplicationState = { buffer: '', hasStripped: false };
+              const retryStructuredAdapter = useRetryStructured ? new StructuredStreamXmlAdapter() : null;
               for await (const chunk of result) {
-                  let chunkText = removeTuongThanTag(chunk.text || '');
-                  if (isRetryPrefillEligible) {
-                      chunkText = PrefillPayloadBuilder.processDeduplicationChunk(chunkText, retryDeduplicationState);
-                  }
-                  if (chunkText) {
-                      fullText += chunkText;
-                      callbacks?.onChunk?.(chunkText);
+                  if (retryStructuredAdapter) {
+                      const rawChunkText = chunk.text || '';
+                      if (rawChunkText) {
+                          const xmlChunk = retryStructuredAdapter.pushChunk(rawChunkText);
+                          if (xmlChunk) {
+                              callbacks?.onChunk?.(xmlChunk);
+                          }
+                      }
+                  } else {
+                      let chunkText = removeTuongThanTag(chunk.text || '');
+                      if (isRetryPrefillEligible) {
+                          chunkText = PrefillPayloadBuilder.processDeduplicationChunk(chunkText, retryDeduplicationState);
+                      }
+                      if (chunkText) {
+                          fullText += chunkText;
+                          callbacks?.onChunk?.(chunkText);
+                      }
                   }
               }
 
+              if (retryStructuredAdapter) {
+                  fullText = finalizeStructuredNarrativeOutput(
+                    retryStructuredAdapter.getRawJson(),
+                    retryStructuredAdapter.getXmlOutput()
+                  );
+              }
               fullText = removeTuongThanTag(fullText);
               apiRunningService.stop(manualTaskId, fullText);
               fallbackEventService.stop();

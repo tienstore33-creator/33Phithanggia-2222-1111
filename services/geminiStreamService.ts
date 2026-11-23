@@ -13,6 +13,12 @@ import { globalApiQueue } from "./ai/globalApiQueue";
 import { PrefillPayloadBuilder } from "./ai/PrefillPayloadBuilder";
 import { removeTuongThanTag } from "../utils/xmlSanitizerUtils";
 import { applyThinkingConfig } from "../utils/thinkingLevelUtils";
+import {
+  isNarrativeStructuredEligible,
+  NARRATIVE_STRUCTURED_RESPONSE_SCHEMA,
+  StructuredStreamXmlAdapter,
+  finalizeStructuredNarrativeOutput,
+} from "./ai/StructuredNarrativeHelper";
 
 export async function generateGameResponseStream(
   prompt: string,
@@ -29,6 +35,7 @@ export async function generateGameResponseStream(
   enablePrefill: boolean = true,
   prefillModelText: string = PrefillPayloadBuilder.DEFAULT_PREFILL_TEXT
 ): Promise<string> {
+  const callStartTime = Date.now();
   const settings = getApiSettings();
   let apiKey = '';
   let apiKeyLabel = '';
@@ -98,29 +105,48 @@ export async function generateGameResponseStream(
       Object.keys(config).forEach(k => delete config[k]);
       Object.assign(config, updatedConfig);
 
-      if (useGoogleSearch) {
-          config.tools = [{ googleSearch: {} }];
-      } else {
-          // Function calling isn't fully implemented here for streaming yet, but we allow tools
-          config.tools = []; 
-      }
-      config.toolConfig = { includeServerSideToolInvocations: true };
+      const useStructuredNarrative = isNarrativeStructuredEligible({
+          modelName: currentModel,
+          responseMimeType,
+          prompt,
+          systemInstruction,
+          enableNarrativeStructured: category === 'main',
+      });
 
-      if (responseMimeType) {
-          config.responseMimeType = responseMimeType;
+      if (useStructuredNarrative) {
+          delete config.tools;
+          delete config.toolConfig;
+          config.responseMimeType = "application/json";
+          config.responseSchema = NARRATIVE_STRUCTURED_RESPONSE_SCHEMA;
+      } else {
+          if (useGoogleSearch) {
+              config.tools = [{ googleSearch: {} }];
+          } else {
+              // Function calling isn't fully implemented here for streaming yet, but we allow tools
+              config.tools = []; 
+          }
+          config.toolConfig = { includeServerSideToolInvocations: true };
+
+          if (responseMimeType) {
+              config.responseMimeType = responseMimeType;
+          }
       }
       
       // Xây dựng contents sử dụng PrefillPayloadBuilder
-      const shouldUsePrefill = !!settings.useAiOath && enablePrefill && PrefillPayloadBuilder.isPrefillEligible(currentModel, responseMimeType);
+      const shouldUsePrefill = !useStructuredNarrative && !!settings.useAiOath && enablePrefill && PrefillPayloadBuilder.isPrefillEligible(currentModel, responseMimeType);
       const finalPrefillText = prefillModelText;
       const contents = PrefillPayloadBuilder.buildContents({
           prompt,
           enablePrefill: shouldUsePrefill,
-          enableUserAnchor: !!settings.useAiOath && enablePrefill,
+          enableUserAnchor: !useStructuredNarrative && !!settings.useAiOath && enablePrefill,
+          enableFewShotMultiTurn: useStructuredNarrative,
           modelName: currentModel,
           responseMimeType,
           prefillModelText: finalPrefillText
       });
+
+      const elapsedSeconds = ((Date.now() - callStartTime) / 1000).toFixed(1);
+      console.log(`[API CALL INFO] Nguồn: ${settings.apiKeySource} | ${activeKeyLabel} : ${currentModel} : ${elapsedSeconds}s : ${purpose}${useStructuredNarrative ? ' [Structured+FewShot]' : ''} : services/geminiStreamService.ts`);
 
       const requestPayloadStr = JSON.stringify(contents, null, 2);
       currentTaskId = apiRunningService.start(currentModel, activeKeyLabel, purpose, requestPayloadStr);
@@ -240,6 +266,7 @@ export async function generateGameResponseStream(
           let startedThinking = (shouldUsePrefill && finalPrefillText && (finalPrefillText.includes('<thinking>') || finalPrefillText.includes('<think>'))) ? true : false;
           let endedThinking = false;
           const deduplicationState = { buffer: '', hasStripped: false };
+          const structuredAdapter = useStructuredNarrative ? new StructuredStreamXmlAdapter() : null;
 
           // Nếu có prefill, gửi trước chunk prefill đã làm sạch cho người nhận để đồng bộ UI
           if (shouldUsePrefill && finalPrefillText && onChunk) {
@@ -251,76 +278,127 @@ export async function generateGameResponseStream(
 
           try {
             let firstChunkReceived = false;
-            for await (const chunk of responseStream) {
-              if (signal?.aborted) {
-                throw new Error("AbortError");
-              }
-              if (isSettled) {
-                break;
-              }
-              resetStreamTimeout(false); // Reset timer on receiving each subsequent chunk
+            try {
+              for await (const chunk of responseStream) {
+                if (signal?.aborted) {
+                  throw new Error("AbortError");
+                }
+                if (isSettled) {
+                  break;
+                }
+                resetStreamTimeout(false); // Reset timer on receiving each subsequent chunk
 
+                if (!firstChunkReceived) {
+                    firstChunkReceived = true;
+                    if (onModelUsed) onModelUsed(currentModel);
+                }
+
+                let chunkThought = "";
+                let chunkText = "";
+                const parts = chunk.candidates?.[0]?.content?.parts || [];
+
+                for (const p of parts as any[]) {
+                    if (p.thought === true && p.text) {
+                        chunkThought += p.text;
+                    } else if (p.text) {
+                        chunkText += p.text;
+                    }
+                }
+                
+                if (parts.length === 0) {
+                    try {
+                        const t = chunk.text;
+                        if (t) {
+                            chunkText = t;
+                        }
+                    } catch (e) {
+                        // Safe ignore if text getter fails on empty/non-text chunks
+                    }
+                }
+
+                if (structuredAdapter) {
+                    if (chunkText) {
+                        const xmlChunk = structuredAdapter.pushChunk(chunkText);
+                        if (xmlChunk) {
+                            fullText += xmlChunk;
+                            clearContentTimeout();
+                            onChunk(xmlChunk);
+                        }
+                    }
+                } else {
+                    let currentTextToSend = "";
+                    if (chunkThought) {
+                        if (!startedThinking) {
+                            startedThinking = true;
+                            currentTextToSend += "<thinking>\n";
+                        }
+                        currentTextToSend += removeTuongThanTag(chunkThought);
+                    }
+
+                    if (chunkText) {
+                        // If we were receiving native thought, and now we receive text, close it!
+                        if (startedThinking && !endedThinking) {
+                            endedThinking = true;
+                            currentTextToSend += "\n</thinking>\n\n";
+                        }
+                        let cleaned = removeTuongThanTag(chunkText);
+                        if (shouldUsePrefill) {
+                            cleaned = PrefillPayloadBuilder.processDeduplicationChunk(cleaned, deduplicationState);
+                        }
+                        currentTextToSend += cleaned;
+                        // Đã nhận được văn bản cốt truyện thực tế (🖋️) -> Hủy bộ đếm timeout chờ xuất chữ
+                        clearContentTimeout();
+                    }
+
+                    if (currentTextToSend) {
+                        fullText += currentTextToSend;
+                        onChunk(currentTextToSend);
+                    }
+                }
+              }
+            } catch (iterErr: any) {
+              const iterMsg = iterErr?.message || String(iterErr || '');
+              const isIncompleteSse =
+                iterMsg.includes('Incomplete JSON segment at the end') ||
+                iterMsg.includes('exception parsing stream chunk');
+              if (!isIncompleteSse) {
+                throw iterErr;
+              }
+              console.warn(`[geminiStreamService] Phát hiện lỗi cắt đoạn SSE (${iterMsg}). Đang phục hồi...`);
               if (!firstChunkReceived) {
-                  firstChunkReceived = true;
-                  if (onModelUsed) onModelUsed(currentModel);
-              }
-
-              let chunkThought = "";
-              let chunkText = "";
-              const parts = chunk.candidates?.[0]?.content?.parts || [];
-
-              for (const p of parts as any[]) {
-                  if (p.thought === true && p.text) {
-                      chunkThought += p.text;
-                  } else if (p.text) {
-                      chunkText += p.text;
+                const singleRes = await ai.models.generateContent({
+                  model: currentModel,
+                  contents,
+                  config
+                });
+                const rawSingleText = singleRes.text || '';
+                if (structuredAdapter && rawSingleText) {
+                  const xmlChunk = structuredAdapter.pushChunk(rawSingleText);
+                  if (xmlChunk) {
+                    fullText += xmlChunk;
+                    clearContentTimeout();
+                    onChunk(xmlChunk);
                   }
-              }
-              
-              if (parts.length === 0) {
-                  try {
-                      const t = chunk.text;
-                      if (t) {
-                          chunkText = t;
-                      }
-                  } catch (e) {
-                      // Safe ignore if text getter fails on empty/non-text chunks
+                } else {
+                  const cleaned = removeTuongThanTag(rawSingleText);
+                  if (cleaned) {
+                    fullText += cleaned;
+                    clearContentTimeout();
+                    onChunk(cleaned);
                   }
-              }
-
-              let currentTextToSend = "";
-              if (chunkThought) {
-                  if (!startedThinking) {
-                      startedThinking = true;
-                      currentTextToSend += "<thinking>\n";
-                  }
-                  currentTextToSend += removeTuongThanTag(chunkThought);
-              }
-
-              if (chunkText) {
-                  // If we were receiving native thought, and now we receive text, close it!
-                  if (startedThinking && !endedThinking) {
-                      endedThinking = true;
-                      currentTextToSend += "\n</thinking>\n\n";
-                  }
-                  let cleaned = removeTuongThanTag(chunkText);
-                  if (shouldUsePrefill) {
-                      cleaned = PrefillPayloadBuilder.processDeduplicationChunk(cleaned, deduplicationState);
-                  }
-                  currentTextToSend += cleaned;
-                  // Đã nhận được văn bản cốt truyện thực tế (🖋️) -> Hủy bộ đếm timeout chờ xuất chữ
-                  clearContentTimeout();
-              }
-
-              if (currentTextToSend) {
-                  fullText += currentTextToSend;
-                  onChunk(currentTextToSend);
+                }
+                if (onModelUsed) onModelUsed(currentModel);
               }
             }
 
             if (isSettled) return;
 
-            if (startedThinking && !endedThinking) {
+            if (structuredAdapter) {
+                fullText = finalizeStructuredNarrativeOutput(
+                    structuredAdapter.getRawJson(),
+                    structuredAdapter.getXmlOutput()
+                );
+            } else if (startedThinking && !endedThinking) {
                 endedThinking = true;
                 const closure = "\n</thinking>\n\n";
                 fullText += closure;

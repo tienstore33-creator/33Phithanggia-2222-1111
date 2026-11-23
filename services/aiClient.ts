@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { ApiConfig } from "../types";
+import { ensureGeminiSseFetchNormalizer } from "../utils/geminiSseFetchFix";
 
 // Khai báo một bộ headers chuẩn chống buffer proxy
 // Cảnh báo: Không được gửi các header này tự động từ trình duyệt (client)
@@ -16,6 +17,9 @@ const streamingBypassHeaders: Record<string, string> = isBrowser ? {} : {
  * Hàm khởi tạo GoogleGenAI client, tự động xử lý logic Reverse Proxy nếu được cấu hình.
  */
 export const getAiClient = (settings: ApiConfig, defaultApiKey: string, category?: string): GoogleGenAI => {
+    if (isBrowser) {
+        ensureGeminiSseFetchNormalizer();
+    }
     // Check if secondary proxy is configured and category is eligible (combat or economy)
     if ((category === 'combat' || category === 'economy') && settings.proxyUrl2 && settings.proxyUrl2.trim() !== '') {
         let baseUrl = settings.proxyUrl2.trim();

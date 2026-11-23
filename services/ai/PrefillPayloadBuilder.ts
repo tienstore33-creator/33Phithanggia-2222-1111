@@ -1,9 +1,14 @@
 import { Content } from "@google/genai";
+import {
+  buildFewShotMultiTurnContents,
+  isStructuredFewShotModel,
+} from "./StructuredNarrativeHelper";
 
 export interface BuildPayloadOptions {
   prompt: string;
   enablePrefill?: boolean;
   enableUserAnchor?: boolean;
+  enableFewShotMultiTurn?: boolean;
   modelName?: string;
   responseMimeType?: string;
   prefillModelText?: string;
@@ -35,8 +40,7 @@ export class PrefillPayloadBuilder {
    */
   public static isPrefillEligible(modelName: string = '', responseMimeType?: string): boolean {
     if (responseMimeType && responseMimeType === 'application/json') return false;
-    const cleanId = modelName.replace(/^models\//i, '').trim().toLowerCase();
-    if (cleanId && !cleanId.includes('lite') && PrefillPayloadBuilder.NO_PREFILL_MODELS.has(cleanId)) {
+    if (isStructuredFewShotModel(modelName)) {
       return false;
     }
     const modelLower = modelName.toLowerCase();
@@ -57,8 +61,7 @@ export class PrefillPayloadBuilder {
     prompt: string = ''
   ): boolean {
     if (responseMimeType && responseMimeType === 'application/json') return false;
-    const cleanId = modelName.replace(/^models\//i, '').trim().toLowerCase();
-    if (!cleanId || cleanId.includes('lite') || !PrefillPayloadBuilder.NO_PREFILL_MODELS.has(cleanId)) {
+    if (!isStructuredFewShotModel(modelName)) {
       return false;
     }
     if (!prompt || prompt.includes('<neo_dau_ra_+user_prefill_anchor>')) {
@@ -147,11 +150,17 @@ export class PrefillPayloadBuilder {
       prompt, 
       enablePrefill = true, 
       enableUserAnchor = false,
+      enableFewShotMultiTurn = false,
       modelName = '',
       responseMimeType,
       prefillModelText = PrefillPayloadBuilder.DEFAULT_PREFILL_TEXT,
       inlineParts 
     } = options;
+
+    // Cách 3: Dùng Few-Shot Multi-Turn chuẩn (user -> model -> user) thay vì prefill ở lượt cuối
+    if (enableFewShotMultiTurn && isStructuredFewShotModel(modelName)) {
+      return buildFewShotMultiTurnContents(prompt, inlineParts, true);
+    }
 
     const userParts: any[] = [];
     

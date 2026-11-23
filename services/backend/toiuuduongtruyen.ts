@@ -175,8 +175,10 @@ export async function handleFastLaneStreamProxy({
       return;
     }
 
+    const upstreamContentType = (googleRes.headers.get("content-type") || "").toLowerCase();
+
     res.status(200);
-    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
     res.setHeader("Cache-Control", "no-cache, no-transform");
     res.setHeader("Connection", "keep-alive");
     res.setHeader("X-Accel-Buffering", "no");
@@ -184,15 +186,174 @@ export async function handleFastLaneStreamProxy({
       (res as any).flushHeaders();
     }
 
+    let emittedAnyChunk = false;
+    const writeSseJson = (jsonStr: string) => {
+      if (!res.writableEnded && !clientClosed) {
+        res.write(`data: ${jsonStr}\n\n`);
+        emittedAnyChunk = true;
+      }
+    };
+
+    if (upstreamContentType.includes("application/json")) {
+      const fullText = await googleRes.text();
+      try {
+        const parsed = JSON.parse(fullText);
+        if (Array.isArray(parsed)) {
+          for (const item of parsed) {
+            writeSseJson(JSON.stringify(item));
+          }
+        } else {
+          writeSseJson(JSON.stringify(parsed));
+        }
+      } catch {
+        console.warn(`[FAST-LANE Stream - ${modelName}] Upstream trả về application/json không parse được.`);
+        writeSseJson(JSON.stringify({
+          error: {
+            code: 502,
+            message: fullText.slice(0, 500) || "Upstream trả về dữ liệu JSON không hợp lệ.",
+            status: "UNAVAILABLE",
+          },
+        }));
+      }
+      if (!res.writableEnded) {
+        res.end();
+      }
+      return;
+    }
+
     if (googleRes.body) {
       const reader = googleRes.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let textBuffer = "";
+      let currentDataLines: string[] = [];
+
+      const tryEmitDataLines = () => {
+        if (currentDataLines.length === 0) return false;
+        const combined = currentDataLines.join("\n").trim();
+        if (!combined || combined === "[DONE]") {
+          currentDataLines = [];
+          return true;
+        }
+        try {
+          const parsed = JSON.parse(combined);
+          writeSseJson(JSON.stringify(parsed));
+          currentDataLines = [];
+          return true;
+        } catch {
+          return false;
+        }
+      };
+
+      const processLine = (rawLine: string) => {
+        const line = rawLine.replace(/\r$/, "");
+        const trimmed = line.trim();
+
+        if (trimmed === "") {
+          if (currentDataLines.length > 0) {
+            tryEmitDataLines();
+            currentDataLines = [];
+          }
+          return;
+        }
+
+        if (trimmed.startsWith("data:")) {
+          const payload = trimmed.slice(5).trim();
+          if (payload === "[DONE]") {
+            currentDataLines = [];
+            return;
+          }
+          if (currentDataLines.length > 0) {
+            tryEmitDataLines();
+          }
+          try {
+            const parsed = JSON.parse(payload);
+            currentDataLines = [];
+            writeSseJson(JSON.stringify(parsed));
+          } catch {
+            currentDataLines.push(payload);
+          }
+          return;
+        }
+
+        if (
+          trimmed.startsWith("event:") ||
+          trimmed.startsWith("id:") ||
+          trimmed.startsWith("retry:") ||
+          trimmed.startsWith(":")
+        ) {
+          return;
+        }
+
+        currentDataLines.push(line);
+        tryEmitDataLines();
+      };
+
       try {
         while (true) {
           if (clientClosed || abortController.signal.aborted) break;
           const { done, value } = await reader.read();
-          if (done) break;
-          if (value && value.length > 0 && !res.writableEnded) {
-            res.write(value);
+          if (done) {
+            const tail = decoder.decode();
+            if (tail) textBuffer += tail;
+            break;
+          }
+          if (value && value.length > 0) {
+            textBuffer += decoder.decode(value, { stream: true });
+            let nlIdx = textBuffer.indexOf("\n");
+            while (nlIdx !== -1) {
+              const line = textBuffer.slice(0, nlIdx);
+              textBuffer = textBuffer.slice(nlIdx + 1);
+              processLine(line);
+              nlIdx = textBuffer.indexOf("\n");
+            }
+          }
+        }
+
+        // Xử lý phần còn sót sau khi kết thúc stream
+        let nlIdx = textBuffer.indexOf("\n");
+        while (nlIdx !== -1) {
+          const line = textBuffer.slice(0, nlIdx);
+          textBuffer = textBuffer.slice(nlIdx + 1);
+          processLine(line);
+          nlIdx = textBuffer.indexOf("\n");
+        }
+        if (textBuffer.trim().length > 0) {
+          processLine(textBuffer);
+        }
+
+        if (currentDataLines.length > 0) {
+          const leftover = currentDataLines.join("\n").trim();
+          currentDataLines = [];
+          if (leftover && leftover !== "[DONE]") {
+            const cleanLeftover = leftover.startsWith("data:")
+              ? leftover.slice(5).trim()
+              : leftover;
+            let parsedOk = false;
+            try {
+              const parsed = JSON.parse(cleanLeftover);
+              if (Array.isArray(parsed)) {
+                for (const item of parsed) {
+                  writeSseJson(JSON.stringify(item));
+                }
+              } else {
+                writeSseJson(JSON.stringify(parsed));
+              }
+              parsedOk = true;
+            } catch {
+              parsedOk = false;
+            }
+            if (!parsedOk) {
+              console.warn(`[FAST-LANE Stream - ${modelName}] Loại bỏ đoạn JSON bị cắt dở ở cuối luồng (${cleanLeftover.length} ký tự).`);
+              if (!emittedAnyChunk) {
+                writeSseJson(JSON.stringify({
+                  error: {
+                    code: 502,
+                    message: "Luồng stream từ Gemini bị ngắt giữa chừng với phân đoạn JSON chưa hoàn chỉnh.",
+                    status: "UNAVAILABLE",
+                  },
+                }));
+              }
+            }
           }
         }
       } finally {

@@ -22,6 +22,12 @@ import { globalApiQueue } from './ai/globalApiQueue';
 import { removeTuongThanTag } from '../utils/xmlSanitizerUtils';
 import { PrefillPayloadBuilder } from './ai/PrefillPayloadBuilder';
 import { applyThinkingConfig } from '../utils/thinkingLevelUtils';
+import {
+  isNarrativeStructuredEligible,
+  NARRATIVE_STRUCTURED_RESPONSE_SCHEMA,
+  StructuredStreamXmlAdapter,
+  finalizeStructuredNarrativeOutput,
+} from './ai/StructuredNarrativeHelper';
 
 /**
  * Service xử lý lượt kể chuyện mở đầu (Lượt 0 - Initial Turn)
@@ -81,12 +87,20 @@ export async function generateInitialStoryStream(
       break;
     }
     const { apiKey: currentApiKey, apiKeyLabel } = keyInfo;
-    const enableSearch = useGoogleSearch && isGoogleSearchSupported(currentModel);
+    const useStructuredNarrative = isNarrativeStructuredEligible({
+      modelName: currentModel,
+      prompt: optimizedPrompt,
+      systemInstruction,
+      enableNarrativeStructured: true,
+    });
+    const enableSearch = !useStructuredNarrative && useGoogleSearch && isGoogleSearchSupported(currentModel);
+    const isPrefillEligible = !useStructuredNarrative && !!settings.useAiOath && PrefillPayloadBuilder.isPrefillEligible(currentModel);
 
     const contents = PrefillPayloadBuilder.buildContents({
       prompt: optimizedPrompt,
-      enablePrefill: !!settings.useAiOath && PrefillPayloadBuilder.isPrefillEligible(currentModel),
-      enableUserAnchor: !!settings.useAiOath,
+      enablePrefill: isPrefillEligible,
+      enableUserAnchor: !useStructuredNarrative && !!settings.useAiOath,
+      enableFewShotMultiTurn: useStructuredNarrative,
       modelName: currentModel,
       prefillModelText: PrefillPayloadBuilder.DEFAULT_PREFILL_TEXT
     });
@@ -95,7 +109,7 @@ export async function generateInitialStoryStream(
       currentModel,
       apiKeyLabel,
       purpose,
-      JSON.stringify({ promptPreview: optimizedPrompt.slice(0, 120), systemInstruction: !!systemInstruction, search: enableSearch })
+      JSON.stringify({ promptPreview: optimizedPrompt.slice(0, 120), systemInstruction: !!systemInstruction, search: enableSearch, structured: useStructuredNarrative })
     );
 
     try {
@@ -104,14 +118,17 @@ export async function generateInitialStoryStream(
       }
 
       const elapsedSec = ((Date.now() - startTime) / 1000).toFixed(1);
-      console.log(`${apiKeyLabel} : ${currentModel} : ${elapsedSec}s : ${purpose} (Search: ${enableSearch}) : /services/initialStoryStreamService.ts`);
+      console.log(`${apiKeyLabel} : ${currentModel} : ${elapsedSec}s : ${purpose} (Search: ${enableSearch}${useStructuredNarrative ? ', Structured+FewShot' : ''}) : /services/initialStoryStreamService.ts`);
 
       const ai = getAiClient(settings, currentApiKey, category);
           const baseConfig: any = {
             systemInstruction: systemInstruction || undefined
           };
 
-          if (enableSearch) {
+          if (useStructuredNarrative) {
+            baseConfig.responseMimeType = "application/json";
+            baseConfig.responseSchema = NARRATIVE_STRUCTURED_RESPONSE_SCHEMA;
+          } else if (enableSearch) {
             baseConfig.tools = [{ googleSearch: {} }];
           }
 
@@ -144,15 +161,69 @@ export async function generateInitialStoryStream(
           }, 0);
 
           let fullText = '';
-          for await (const chunk of resultStream) {
-            if (signal?.aborted) {
-              throw new Error('Yêu cầu tạo lượt mở đầu đã bị hủy.');
+          let receivedAnyChunk = false;
+          const structuredAdapter = useStructuredNarrative ? new StructuredStreamXmlAdapter() : null;
+          try {
+            for await (const chunk of resultStream) {
+              if (signal?.aborted) {
+                throw new Error('Yêu cầu tạo lượt mở đầu đã bị hủy.');
+              }
+              if (structuredAdapter) {
+                const rawChunk = chunk.text || '';
+                if (rawChunk) {
+                  receivedAnyChunk = true;
+                  const xmlChunk = structuredAdapter.pushChunk(rawChunk);
+                  if (xmlChunk && onChunk) {
+                    onChunk(xmlChunk);
+                  }
+                }
+              } else {
+                const chunkText = removeTuongThanTag(chunk.text || '');
+                if (chunkText) {
+                  receivedAnyChunk = true;
+                  fullText += chunkText;
+                  if (onChunk) {
+                    onChunk(chunkText);
+                  }
+                }
+              }
             }
-            const chunkText = removeTuongThanTag(chunk.text || '');
-            fullText += chunkText;
-            if (chunkText && onChunk) {
-              onChunk(chunkText);
+          } catch (iterErr: any) {
+            const iterMsg = iterErr?.message || String(iterErr || '');
+            const isIncompleteSse =
+              iterMsg.includes('Incomplete JSON segment at the end') ||
+              iterMsg.includes('exception parsing stream chunk');
+            if (!isIncompleteSse) {
+              throw iterErr;
             }
+            console.warn(`[initialStoryStreamService] Phát hiện lỗi cắt đoạn SSE (${iterMsg}). Đang phục hồi...`);
+            if (!receivedAnyChunk) {
+              const singleRes = await ai.models.generateContent({
+                model: currentModel,
+                contents,
+                config
+              });
+              const rawSingleText = singleRes.text || '';
+              if (structuredAdapter && rawSingleText) {
+                const xmlChunk = structuredAdapter.pushChunk(rawSingleText);
+                if (xmlChunk && onChunk) {
+                  onChunk(xmlChunk);
+                }
+              } else {
+                const text = removeTuongThanTag(rawSingleText);
+                fullText = text;
+                if (text && onChunk) {
+                  onChunk(text);
+                }
+              }
+            }
+          }
+
+          if (structuredAdapter) {
+            fullText = finalizeStructuredNarrativeOutput(
+              structuredAdapter.getRawJson(),
+              structuredAdapter.getXmlOutput()
+            );
           }
 
           const cleanFullText = removeTuongThanTag(fullText);
@@ -214,17 +285,29 @@ export async function generateInitialStoryStream(
       const manualTaskId = apiRunningService.start(selectedModel, isProxy ? 'Proxy API' : 'Manual Selection', purpose, 'Manual Retry');
 
       try {
+        const useRetryStructured = isNarrativeStructuredEligible({
+          modelName: selectedModel,
+          prompt: optimizedPrompt,
+          systemInstruction,
+          enableNarrativeStructured: true,
+        });
         const contents = PrefillPayloadBuilder.buildContents({
           prompt: optimizedPrompt,
-          enablePrefill: !!settings.useAiOath && PrefillPayloadBuilder.isPrefillEligible(selectedModel),
-          enableUserAnchor: !!settings.useAiOath,
+          enablePrefill: !useRetryStructured && !!settings.useAiOath && PrefillPayloadBuilder.isPrefillEligible(selectedModel),
+          enableUserAnchor: !useRetryStructured && !!settings.useAiOath,
+          enableFewShotMultiTurn: useRetryStructured,
           modelName: selectedModel,
           prefillModelText: PrefillPayloadBuilder.DEFAULT_PREFILL_TEXT
         });
 
-        const retryConfig = applyThinkingConfig(selectedModel, {
+        const retryBaseConfig: any = {
           systemInstruction: systemInstruction || undefined
-        }, settings);
+        };
+        if (useRetryStructured) {
+          retryBaseConfig.responseMimeType = "application/json";
+          retryBaseConfig.responseSchema = NARRATIVE_STRUCTURED_RESPONSE_SCHEMA;
+        }
+        const retryConfig = applyThinkingConfig(selectedModel, retryBaseConfig, settings);
 
         const resultStream = await globalApiQueue.enqueue(async () => {
           return await manualAi.models.generateContentStream({
@@ -235,10 +318,26 @@ export async function generateInitialStoryStream(
         }, 0);
 
         let fullText = '';
+        const retryStructuredAdapter = useRetryStructured ? new StructuredStreamXmlAdapter() : null;
         for await (const chunk of resultStream) {
-          const chunkText = removeTuongThanTag(chunk.text || '');
-          fullText += chunkText;
-          if (chunkText && onChunk) onChunk(chunkText);
+          if (retryStructuredAdapter) {
+            const rawChunk = chunk.text || '';
+            if (rawChunk) {
+              const xmlChunk = retryStructuredAdapter.pushChunk(rawChunk);
+              if (xmlChunk && onChunk) onChunk(xmlChunk);
+            }
+          } else {
+            const chunkText = removeTuongThanTag(chunk.text || '');
+            fullText += chunkText;
+            if (chunkText && onChunk) onChunk(chunkText);
+          }
+        }
+
+        if (retryStructuredAdapter) {
+          fullText = finalizeStructuredNarrativeOutput(
+            retryStructuredAdapter.getRawJson(),
+            retryStructuredAdapter.getXmlOutput()
+          );
         }
 
         const cleanFullText = removeTuongThanTag(fullText);
